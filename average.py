@@ -32,24 +32,13 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
     f.seek(dataOffest)
     data = f.read(dataSize)
     decom = zlib.decompress(data) if compressed else data
-    if useZoom:
-        result = []
-        itemCount = len(decom)/32
-    else:
-        header = decom[:24]
-        result = []
-        (chromId, chromStart, chromEnd, itemStep, itemSpan, 
-            iType, _, itemCount) = struct.unpack(Enddian + "IIIIIBBH", header)
-    x = 0
-    while x < itemCount and startIndex < endIndex:
-        # zoom summary
-        if useZoom:
-            (_, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
-            x += 1
-            end -= 1
-            value = sumData / (end - start) # if was quering for something else this could change
-        # bedgraph   
-        elif iType == 1:
+    header = decom[:24]
+    result = []
+    (chromId, chromStart, chromEnd, itemStep, itemSpan, 
+        iType, _, itemCount) = struct.unpack(Enddian + "IIIIIBBH", header)
+    for x in range(0, itemCount):
+        # bedgraph
+        if iType == 1:
             (start, end, value) = struct.unpack(Enddian + "IIf", decom[24 + 12*x : 36 + 12*x])
             end = end - 1
         # varStep
@@ -68,7 +57,7 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
             print("bad file")
             error()
 
-        if start > endIndex:
+        if start > endIndex or startIndex > endIndex:
             break
         elif endIndex - 1 <= end:
             result.append((startIndex, endIndex - 1, value))
@@ -80,6 +69,29 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
 
     return (startIndex, result)
 
+# returns (startIndex, [(startIndex, endIndex, average)s])
+def grepZoomSections(f, dataOffset, dataSize, startIndex, endIndex):
+    f.seek(dataOffset)
+    data = f.read(2939)
+    decom = zlib.decompress(data) if compressed else data
+    x = 0
+    result = []
+    length = len(decom)
+    while x*32 < length and startIndex < endIndex:
+        (_, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
+        x += 1
+        end -= 1
+        value = sumData / (end - start) # if was quering for something else this could change
+        if start > endIndex:
+            break
+        elif endIndex - 1 <= end:
+            result.append((startIndex, endIndex - 1, value))
+            startIndex = endIndex
+        else:
+            result.append((startIndex, end, value))
+            startIndex = end + 1
+
+    return (startIndex, result)
 
 # returns (startIndex, [(startIndex, endIndex, average)s])
 # the returned cRange is the final endIndex - startIndex - 1
@@ -104,7 +116,7 @@ def locateTreeAverage(f, rTree, chrmId, startIndex, endIndex):
             offset = node["nextOff"]
         else:
             if isLeaf == 1:
-                return grepSections(f, node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
+                return grepZoomSections(f, node["rdataOffset"], node["rDataSize"], startIndex, endIndex) if useZoom else grepSections(f, node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
             elif isLeaf == 0:
                 # jump to next layer
                 offset = node["rdataOffset"]
@@ -123,6 +135,7 @@ def locateTreeAverage(f, rTree, chrmId, startIndex, endIndex):
 # parameter: array of (start, end, value)
 # return: mean of the values
 def averageOfArray(chromArray):
+    print(chromArray)
     count = 0
     value = 0.0
     for section in chromArray:
@@ -224,5 +237,4 @@ def readBioFile(file, chrmzone, startIndex, endIndex):
     useZoom = False
     return mean
 
-
-# print(readBioFile("39033.bigwig", "chrY", 0, 524299))
+# print(readBioFile("39033.bigwig", "chrY", 0, 512))
