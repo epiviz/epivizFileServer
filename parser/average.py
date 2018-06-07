@@ -3,7 +3,7 @@ import zlib
 
 Enddian = "="
 compressed = True
-useZoom = False
+zoomOffset = 0
 
 def readRtreeNode(f, offset, isLeaf):
     f.seek(offset)
@@ -32,7 +32,7 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
     f.seek(dataOffest)
     data = f.read(dataSize)
     decom = zlib.decompress(data) if compressed else data
-    if useZoom:
+    if zoomOffset:
         result = []
         itemCount = len(decom)/32
     else:
@@ -43,7 +43,7 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
     x = 0
     while x < itemCount and startIndex < endIndex:
         # zoom summary
-        if useZoom:
+        if zoomOffset:
             (_, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
             x += 1
             end -= 1
@@ -166,20 +166,21 @@ def getId(f, chromTreeOffset, chrmzone):
         exit() # need to handle error
     return chrmId
 
-def getZoom(f, zoomLevels):
+def getZoom(f, startIndex, endIndex, step):
+    f.seek(0)
+    data = f.read(8)
+    (_, _, zoomLevels) = struct.unpack(Enddian + "IHH", data)
     f.seek(64)
-    zooms = []
+    offset = 0
+    distance = step**2
     for x in range(1, zoomLevels + 1):
-        zoom = {}
         data = f.read(24)
         (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack("=IIQQ", data)
-        zoom["level"] = x
-        zoom["reductionLevel"] = reductionLevel
-        zoom["reserved"] = reserved
-        zoom["ldataOffest"] = dataOffest
-        zoom["indexOffset"] = indexOffset
-        zooms.append(zoom)
-    return zooms[0]["indexOffset"]
+        newDis = ((reductionLevel - step)*1.0) ** 2
+        if newDis < distance:
+            distance = newDis
+            offset = indexOffset
+    return offset
 
 
 # end needs to be greater than start
@@ -197,32 +198,43 @@ def aveBigWig(f, chrmzone, startIndex, endIndex):
     chrmId = getId(f, chromTreeOffset, chrmzone)
 
     chromArray = []
-    headNodeOffset = getZoom(f, zoomLevels) + 48 if useZoom else fullIndexOffset + 48
+    headNodeOffset = zoomOffset + 48 if zoomOffset else fullIndexOffset + 48
     while startIndex < endIndex:
         (startIndex, sections) = locateTreeAverage(f, headNodeOffset, chrmId, startIndex, endIndex)
         for section in sections:
             chromArray.append(section)
     
-
     return averageOfArray(chromArray)
 
-# the endIndex is exclusive
-def readBioFile(file, chrmzone, startIndex, endIndex):
-    # for test purposes
-    global useZoom 
-    # useZoom= True
-
-    if startIndex == endIndex:
-        print("wrong indecies")
-    f = open(file, "rb")
+def readBioFile(f, chrmzone, startIndex, endIndex):
+    f.seek(0)
+    global Enddian
     if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
         mean = aveBigWig(f, chrmzone, startIndex, endIndex)
     elif struct.unpack("<I", f.read(4))[0] == int("0x888FFC26", 0):
         Enddian = "<"
         mean = aveBigWig(f, chrmzone, startIndex, endIndex)
-    f.close()
-    useZoom = False
+    else:
+        print("unsupported file type")
+        error()
     return mean
 
+# the endIndex is exclusive
+def getRange(file, chrmzone, startIndex, endIndex, points):
+    global zoomOffset
+    if startIndex == endIndex:
+        print("wrong indecies")
+    f = open(file, "rb")
+    step = (endIndex - startIndex)*1.0/points
+    zoomOffset = getZoom(f, startIndex, endIndex, step)
+    mean = []
+    while startIndex < endIndex:
+        end = startIndex + step 
+        end = endIndex if (endIndex - end) < step else end
+        mean.append(readBioFile(f, chrmzone, startIndex, end))
+        startIndex = end
 
-# print(readBioFile("39033.bigwig", "chrY", 0, 524299))
+    f.close()
+    return mean
+
+# print(getRange("39033.bigwig", "chrY", 0, 30, 2))
