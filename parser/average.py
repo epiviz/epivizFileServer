@@ -216,6 +216,8 @@ def getRange(file, chrmzone, startIndex, endIndex, points):
     step = (endIndex - startIndex)*1.0/points
     zoomOffset = getZoom(f, startIndex, endIndex, step)
     mean = []
+    startArray = []
+    endArray = []
 
     f.seek(0)
     if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
@@ -230,10 +232,12 @@ def getRange(file, chrmzone, startIndex, endIndex, points):
     while startIndex < endIndex:
         end = startIndex + step 
         end = endIndex if (endIndex - end) < step else end
+        startArray.append(startIndex)
+        endArray.append(end)
         mean.append(meanCall(f, chrmzone, startIndex, end))
         startIndex = end
 
     f.close()
-    return mean
+    return startArray, endArray, mean
 
 # print(getRange("39033.bigwig", "chrY", 0, 30, 2))
