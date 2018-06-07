@@ -206,32 +206,31 @@ def aveBigWig(f, chrmzone, startIndex, endIndex):
     
     return averageOfArray(chromArray)
 
-def readBioFile(f, chrmzone, startIndex, endIndex):
-    f.seek(0)
-    global Enddian
-    if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
-        mean = aveBigWig(f, chrmzone, startIndex, endIndex)
-    elif struct.unpack("<I", f.read(4))[0] == int("0x888FFC26", 0):
-        Enddian = "<"
-        mean = aveBigWig(f, chrmzone, startIndex, endIndex)
-    else:
-        print("unsupported file type")
-        error()
-    return mean
-
 # the endIndex is exclusive
 def getRange(file, chrmzone, startIndex, endIndex, points):
     global zoomOffset
     if startIndex == endIndex:
         print("wrong indecies")
+        error()
     f = open(file, "rb")
     step = (endIndex - startIndex)*1.0/points
     zoomOffset = getZoom(f, startIndex, endIndex, step)
     mean = []
+
+    f.seek(0)
+    if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
+        meanCall = aveBigWig
+    elif struct.unpack("<I", f.read(4))[0] == int("0x888FFC26", 0):
+        Enddian = "<"
+        meanCall = aveBigWig
+    else:
+        print("unsupported file type")
+        error()
+
     while startIndex < endIndex:
         end = startIndex + step 
         end = endIndex if (endIndex - end) < step else end
-        mean.append(readBioFile(f, chrmzone, startIndex, end))
+        mean.append(meanCall(f, chrmzone, startIndex, end))
         startIndex = end
 
     f.close()
