@@ -1,28 +1,28 @@
 import struct
 import zlib
 
-Enddian = "="
+Endian = "="
 compressed = True
 zoomOffset = 0
 
 def readRtreeNode(f, offset, isLeaf):
     f.seek(offset)
     data = f.read(4)
-    (rIsLeaf, rReserved, rCount) = struct.unpack(Enddian + "BBH", data)
+    (rIsLeaf, rReserved, rCount) = struct.unpack(Endian + "BBH", data)
     if isLeaf:
         data = f.read(32)
-        (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(Enddian + "IIIIQQ", data)
+        (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(Endian + "IIIIQQ", data)
         return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "rDataSize": rDataSize, "nextOff": offset + 32}
     else:
         data = f.read(24)
-        (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(Enddian + "IIIIQ", data)
+        (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(Endian + "IIIIQ", data)
         return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "nextOff": offset + 24}
 
 # read 1 r tree head node
 def readRtreeHeadNode(f, offset):
     f.seek(offset)
     data = f.read(4)
-    (rIsLeaf, rReserved, rCount) = struct.unpack(Enddian + "BBH", data)
+    (rIsLeaf, rReserved, rCount) = struct.unpack(Endian + "BBH", data)
     return readRtreeNode(f, offset, rIsLeaf)
     
 
@@ -39,7 +39,7 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
         header = decom[:24]
         result = []
         (chromId, chromStart, chromEnd, itemStep, itemSpan, 
-            iType, _, itemCount) = struct.unpack(Enddian + "IIIIIBBH", header)
+            iType, _, itemCount) = struct.unpack(Endian + "IIIIIBBH", header)
     x = 0
     while x < itemCount and startIndex < endIndex:
         # zoom summary
@@ -50,18 +50,18 @@ def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
             value = sumData / (end - start) # if was quering for something else this could change
         # bedgraph   
         elif iType == 1:
-            (start, end, value) = struct.unpack(Enddian + "IIf", decom[24 + 12*x : 36 + 12*x])
+            (start, end, value) = struct.unpack(Endian + "IIf", decom[24 + 12*x : 36 + 12*x])
             end = end - 1
         # varStep
         elif iType == 2:
-            (start, value) = struct.unpack(Enddian + "If", decom[24 + 8*x : 32 + 8*x])
+            (start, value) = struct.unpack(Endian + "If", decom[24 + 8*x : 32 + 8*x])
             if x == itemCount - 1:
                 end = chromEnd - 1
             else:
-                end = struct.unpack(Enddian + "I", decom[32 + 8*x : 36 + 8*x])[0] - 1
+                end = struct.unpack(Endian + "I", decom[32 + 8*x : 36 + 8*x])[0] - 1
         # fixStep
         elif iType == 3:
-            value = struct.unpack("f", decom[24 + 4*x : 28 + 4*x])[0]
+            value = struct.unpack(Endian + "f", decom[24 + 4*x : 28 + 4*x])[0]
             start = chromStart + x*itemStep
             end = chromStart + (x + 1)*itemStep - 1
         else:
@@ -138,27 +138,27 @@ def averageOfArray(chromArray):
 def getId(f, chromTreeOffset, chrmzone):
     f.seek(chromTreeOffset)
     data = f.read(4)
-    treeMagic = struct.unpack(Enddian + "I", data)
+    treeMagic = struct.unpack(Endian + "I", data)
     treeMagic = treeMagic[0]
 
     data = f.read(12)
-    (blockSize, keySize, valSize) = struct.unpack(Enddian + "III", data)
+    (blockSize, keySize, valSize) = struct.unpack(Endian + "III", data)
     data = f.read(16)
-    (itemCount, treeReserved) = struct.unpack(Enddian + "QQ", data)
+    (itemCount, treeReserved) = struct.unpack(Endian + "QQ", data)
     data = f.read(4)
 
     chrmId = -1
-    (isLeaf, nodeReserved, count) = struct.unpack(Enddian + "BBH", data) 
+    (isLeaf, nodeReserved, count) = struct.unpack(Endian + "BBH", data) 
     for y in range(0, count):
         key = ""
         for x in range(0, keySize):
             data = f.read(1)
-            temp = struct.unpack(Enddian + "b", data) 
+            temp = struct.unpack(Endian + "b", data) 
             if chr(temp[0]) != "\x00":
                 key += chr(temp[0])
         if isLeaf == 1:
             data = f.read(8)
-            (chromId, chromSize) = struct.unpack(Enddian + "II", data)
+            (chromId, chromSize) = struct.unpack(Endian + "II", data)
             if key == chrmzone:
                 chrmId = chromId
     if chrmId == -1:
@@ -169,13 +169,13 @@ def getId(f, chromTreeOffset, chrmzone):
 def getZoom(f, startIndex, endIndex, step):
     f.seek(0)
     data = f.read(8)
-    (_, _, zoomLevels) = struct.unpack(Enddian + "IHH", data)
+    (_, _, zoomLevels) = struct.unpack(Endian + "IHH", data)
     f.seek(64)
     offset = 0
     distance = step**2
     for x in range(1, zoomLevels + 1):
         data = f.read(24)
-        (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack("=IIQQ", data)
+        (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack(Endian + "IIQQ", data)
         newDis = ((reductionLevel - step)*1.0) ** 2
         if newDis < distance:
             distance = newDis
@@ -188,10 +188,10 @@ def aveBigWig(f, chrmzone, startIndex, endIndex):
     f.seek(0)
     data = f.read(36)
     (magic, version, zoomLevels, chromTreeOffset, fullDataOffset, fullIndexOffset,
-        fieldCount, definedFieldCount) = struct.unpack(Enddian + "IHHQQQHH", data)
+        fieldCount, definedFieldCount) = struct.unpack(Endian + "IHHQQQHH", data)
 
     data = f.read(20)
-    (autoSqlOffset, totalSummaryOffset, uncompressBufSize) = struct.unpack(Enddian + "QQI", data)
+    (autoSqlOffset, totalSummaryOffset, uncompressBufSize) = struct.unpack(Endian + "QQI", data)
     if uncompressBufSize == 0:
         compressed = False
 
@@ -223,7 +223,7 @@ def getRange(file, chrmzone, startIndex, endIndex, points):
     if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
         meanCall = aveBigWig
     elif struct.unpack("<I", f.read(4))[0] == int("0x888FFC26", 0):
-        Enddian = "<"
+        Endian = "<"
         meanCall = aveBigWig
     else:
         print("unsupported file type")
