@@ -45,25 +45,27 @@ class BigWig(BaseFile):
                 "uncompressBufSize" : uncompressBufSize}
 
     def getRange(self, chr, start, end, points=2000, metric="AVG", respType = "JSON"):
-        f = open(self.file, "rb")
         if start == end:
             raise Exception("InputError")
 
         if metric is "AVG":
             metricFunc = self.aveBigWig
-
+        f = open(self.file, "rb")
         step = (end - start)*1.0/points
         zoomOffset = self.getZoom(f, start, end, step)
         mean = []
         startArray = []
         endArray = []
+        startIndex = startIndex*1.0
+
+        averageArray = metricFunc(f, chrmzone, start, end, zoomOffset)
 
         while start < end:
-            t_end = start + step 
-            t_end = end if (end - t_end) < step else t_end
+            t_end = math.floor(start + step)
+            t_end = endIndex * 1.0 if (end - t_end) < step else t_end
             startArray.append(start)
             endArray.append(t_end)
-            mean.append(metricFunc(f, chr, start, t_end, zoomOffset))
+            mean.append(averageOfArray(start, t_end, averageArray))
             start = t_end
 
         if respType is "JSON":
@@ -102,7 +104,7 @@ class BigWig(BaseFile):
             for section in sections:
                 chromArray.append(section)
         
-        return self.averageOfArray(chromArray)
+        return chromArray
 
     def getId(self, f, chrmzone):
         f.seek(self.header.get("chromTreeOffset"))
@@ -241,16 +243,21 @@ class BigWig(BaseFile):
 
         return (startIndex, result)
 
-    # parameter: array of (start, end, value)
+    # parameter: start, end, array of (start, end, value)
     # return: mean of the values
-    def averageOfArray(self, chromArray):
+    def averageOfArray(start, end, averageArray):
         count = 0
         value = 0.0
-        for section in chromArray:
-            count += section[1] - section[0] + 1
-            value += (section[1] - section[0] + 1) * section[2]
-        # this shouldn't happen, the error should be thrown else where
-        # instead of reaching here
-        if count == 0:
-            raise Exception("InputError")
-        return value/count
+
+        for section in averageArray:
+            if start > section[1] or start >= end:
+                continue
+            elif section[1] - 1 <= end:
+                count += (end - start) + 1
+                value = ((end - start) + 1) * section[2]
+                start = end
+            else:
+                count += (section[1] - start) + 1
+                value = ((section[1] - start) + 1) * section[2]
+                start = section[1] + 1
+        return 0.0 if count == 0 else value/count

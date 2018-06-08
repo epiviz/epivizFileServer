@@ -230,14 +230,13 @@ def getBigwigRange(file, chrmzone, startIndex, endIndex, points):
 
     f.seek(0)
     if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
-        meanCall = aveBigWig
+        pass
     elif struct.unpack("<I", f.read(4))[0] == int("0x888FFC26", 0):
         Endian = "<"
-        meanCall = aveBigWig
     else:
         print("unsupported file type")
         error()
-    averageArray = meanCall(f, chrmzone, startIndex, endIndex)
+    averageArray = aveBigWig(f, chrmzone, startIndex, endIndex)
 
     while startIndex < endIndex:
         end = math.floor(startIndex + step)
@@ -250,4 +249,17 @@ def getBigwigRange(file, chrmzone, startIndex, endIndex, points):
     f.close()
     return startArray, endArray, mean
 
+def getBigbedRange(file, chromZone, startIndex, endIndex):
+    if startIndex == endIndex:
+        print("wrong indecies")
+        error()
+    f = open(file, "rb")
+    if struct.unpack("I", f.read(4))[0] == int("0x8789F2EB", 0):
+        pass
+    elif struct.unpack("<I", f.read(4))[0] == int("0x8789F2EB", 0):
+        Endian = "<"
+    else:
+        print("unsupported file type")
+        error()
+    pass
 # print(getBigwigRange("39214.bigwig", "chr11", 3947953, 7164991, 2000))
