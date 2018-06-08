@@ -75,21 +75,24 @@ class BigWig(BaseFile):
         return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
 
     def getZoom(self, f, start, end, step):
-        f.seek(0)
-        data = f.read(8)
-        (_, _, zoomLevels) = struct.unpack(self.endian + "IHH", data)
-
-        f.seek(64)
+        if not hasattr(self, 'zooms'):
+            self.zooms = {}
+            f.seek(0)
+            data = f.read(8)
+            (_, _, zoomLevels) = struct.unpack(self.endian + "IHH", data)
+            f.seek(64)
+            for level in range(1, zoomLevels + 1):
+                data = f.read(24)
+                (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack(self.endian + "IIQQ", data)
+                self.zooms[level] = [reductionLevel, indexOffset]
+        
         offset = 0
         distance = step**2
-
-        for x in range(1, zoomLevels + 1):
-            data = f.read(24)
-            (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack(self.endian + "IIQQ", data)
-            newDis = ((reductionLevel - step)*1.0) ** 2
+        for level in self.zooms:
+            newDis = ((self.zooms[level][0] - step)*1.0) ** 2
             if newDis < distance:
-                distance = newDis
-                offset = indexOffset
+                    distance = newDis
+                    offset = self.zooms[level][1]
 
         return offset
 
