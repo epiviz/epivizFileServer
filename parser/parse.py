@@ -1,5 +1,6 @@
 import struct
 import zlib
+import math
 
 Endian = "="
 compressed = True
@@ -30,6 +31,7 @@ def readRtreeHeadNode(f, offset):
 # returns (startIndex, [(startIndex, endIndex, average)s])
 def grepSections(f, dataOffest, dataSize, startIndex, endIndex):
     f.seek(dataOffest)
+    print(dataOffest)
     data = f.read(dataSize)
     decom = zlib.decompress(data) if compressed else data
     if zoomOffset:
@@ -96,11 +98,11 @@ def locateTreeAverage(f, rTree, chrmId, startIndex, endIndex):
         # query this layer of rTree
         # if leaf layer
         if node["rStartChromIx"] > chrmId:
-            print(node["rStartChromIx"], chrmId)
+            print(chrmId, node["rStartChromIx"], node["rEndChromIx"], node["rStartBase"], node["rEndBase"] - 1)
             print("bad chrom name or chromZone range")
             error() # not found in tree
         # rEndBase - 1 for inclusive range
-        elif node["rStartChromIx"] < chrmId or not (startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
+        elif node["rStartChromIx"] < chrmId and not (startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
             offset = node["nextOff"]
         else:
             if isLeaf == 1:
@@ -120,20 +122,25 @@ def locateTreeAverage(f, rTree, chrmId, startIndex, endIndex):
     print("bad request: didn't found")
     error()
 
-# parameter: array of (start, end, value)
+# parameter: start, end, array of (start, end, value)
 # return: mean of the values
-def averageOfArray(chromArray):
+def averageOfArray(start, end, averageArray):
     count = 0
     value = 0.0
-    for section in chromArray:
-        count += section[1] - section[0] + 1
-        value += (section[1] - section[0] + 1) * section[2]
-    # this shouldn't happen, the error should be thrown else where
-    # instead of reaching here
-    if count == 0:
-        print("bad range")
-        error()
-    return value/count
+
+    for section in averageArray:
+        if start > section[1] or start >= end:
+            continue
+        elif section[1] - 1 <= end:
+            count += (end - start) + 1
+            value = ((end - start) + 1) * section[2]
+            start = end
+        else:
+            count += (section[1] - start) + 1
+            value = ((section[1] - start) + 1) * section[2]
+            start = section[1] + 1
+
+    return 0.0 if count == 0 else value/count
 
 def getId(f, chromTreeOffset, chrmzone):
     f.seek(chromTreeOffset)
@@ -204,10 +211,11 @@ def aveBigWig(f, chrmzone, startIndex, endIndex):
         for section in sections:
             chromArray.append(section)
     
-    return averageOfArray(chromArray)
+    return chromArray
 
 # the endIndex is exclusive
-def getRange(file, chrmzone, startIndex, endIndex, points):
+# the endIndex is exclusive
+def getBigwigRange(file, chrmzone, startIndex, endIndex, points):
     global zoomOffset
     if startIndex == endIndex:
         print("wrong indecies")
@@ -218,6 +226,7 @@ def getRange(file, chrmzone, startIndex, endIndex, points):
     mean = []
     startArray = []
     endArray = []
+    startIndex = startIndex*1.0
 
     f.seek(0)
     if struct.unpack("I", f.read(4))[0] == int("0x888FFC26", 0):
@@ -228,16 +237,17 @@ def getRange(file, chrmzone, startIndex, endIndex, points):
     else:
         print("unsupported file type")
         error()
+    averageArray = meanCall(f, chrmzone, startIndex, endIndex)
 
     while startIndex < endIndex:
-        end = startIndex + step 
-        end = endIndex if (endIndex - end) < step else end
+        end = math.floor(startIndex + step)
+        end = endIndex * 1.0 if (endIndex - end) < step else end
         startArray.append(startIndex)
         endArray.append(end)
-        mean.append(meanCall(f, chrmzone, startIndex, end))
+        mean.append(averageOfArray(startIndex, end, averageArray))
         startIndex = end
 
     f.close()
     return startArray, endArray, mean
 
-# print(getRange("39033.bigwig", "chrY", 0, 30, 2))
+# print(getBigwigRange("39214.bigwig", "chr11", 3947953, 7164991, 2000))
