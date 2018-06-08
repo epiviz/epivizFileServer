@@ -1,6 +1,5 @@
 from .BaseFile import BaseFile
 import struct
-import ujson
 import zlib
 
 class BigWig(BaseFile):
@@ -22,27 +21,28 @@ class BigWig(BaseFile):
         else:
             raise Exception("BadFileError")
 
-        self.parse_header()
+        self.header = self.parse_header(f)
+
+        if self.header.get("uncompressBufSize") == 0:
+            self.compressed = False
 
         f.close()
 
-    def parse_header(self):
-        f = open(self.file, "rb")
-
+    def parse_header(self, f):
         # parse header
         f.seek(0)
 
         data = f.read(36)
-        (self.magic, self.version, self.zoomLevels, self.chromTreeOffset, self.fullDataOffset, self.fullIndexOffset,
-            self.fieldCount, self.definedFieldCount) = struct.unpack(self.endian + "IHHQQQHH", data)
+        (magic, version, zoomLevels, chromTreeOffset, fullDataOffset, fullIndexOffset,
+            fieldCount, definedFieldCount) = struct.unpack(self.endian + "IHHQQQHH", data)
 
         data = f.read(20)
-        (self.autoSqlOffset, self.totalSummaryOffset, self.uncompressBufSize) = struct.unpack(self.endian + "QQI", data)
+        (autoSqlOffset, totalSummaryOffset, uncompressBufSize) = struct.unpack(self.endian + "QQI", data)
 
-        if self.uncompressBufSize == 0:
-            self.compressed = False
-
-        f.close()
+        return {"magic" : magic, "version" : version, "zoomLevels" : zoomLevels, "chromTreeOffset" : chromTreeOffset, 
+                "fullDataOffset" : fullDataOffset, "fullIndexOffset" : fullIndexOffset, "fieldCount" : fieldCount, 
+                "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
+                "uncompressBufSize" : uncompressBufSize}
 
     def getRange(self, chr, start, end, points=2000, metric="AVG", respType = "JSON"):
         f = open(self.file, "rb")
@@ -71,11 +71,6 @@ class BigWig(BaseFile):
 
         return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
 
-
-    def formatAsJSON(self, data):
-        return ujson.dumps(data)
-
-
     def getZoom(self, f, start, end, step):
         f.seek(0)
         data = f.read(8)
@@ -98,19 +93,19 @@ class BigWig(BaseFile):
     def aveBigWig(self, f, chr, start, end, zoomOffset):
 
         chromArray = []
-        headNodeOffset = zoomOffset + 48 if zoomOffset else self.fullIndexOffset + 48
+        headNodeOffset = zoomOffset + 48 if zoomOffset else self.header.get("fullIndexOffset") + 48
 
         chrmId = self.getId(f, chr)
 
         while start < end:
-            (startIndex, sections) = self.locateTreeAverage(f, headNodeOffset, chrmId, start, end, zoomOffset)
+            (start, sections) = self.locateTreeAverage(f, headNodeOffset, chrmId, start, end, zoomOffset)
             for section in sections:
                 chromArray.append(section)
         
         return self.averageOfArray(chromArray)
 
     def getId(self, f, chrmzone):
-        f.seek(self.chromTreeOffset)
+        f.seek(self.header.get("chromTreeOffset"))
         data = f.read(4)
         treeMagic = struct.unpack(self.endian + "I", data)
         treeMagic = treeMagic[0]
