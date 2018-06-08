@@ -53,20 +53,20 @@ class BigWig(BaseFile):
             metricFunc = self.aveBigWig
         f = open(self.file, "rb")
         step = (end - start)*1.0/points
-        zoomOffset = self.getZoom(f, start, end, step)
+        self.zoomOffset = self.getZoom(f, start, end, step)
         mean = []
         startArray = []
         endArray = []
-        startIndex = startIndex*1.0
+        start = start*1.0
 
-        averageArray = metricFunc(f, chrmzone, start, end, zoomOffset)
+        averageArray = metricFunc(f, chr, start, end)
 
         while start < end:
             t_end = math.floor(start + step)
-            t_end = endIndex * 1.0 if (end - t_end) < step else t_end
+            t_end = end * 1.0 if (end - t_end) < step else t_end
             startArray.append(start)
             endArray.append(t_end)
-            mean.append(averageOfArray(start, t_end, averageArray))
+            mean.append(self.averageOfArray(start, t_end, averageArray))
             start = t_end
 
         if respType is "JSON":
@@ -93,55 +93,56 @@ class BigWig(BaseFile):
 
         return offset
 
-    def aveBigWig(self, f, chr, start, end, zoomOffset):
+    def aveBigWig(self, f, chr, start, end):
 
         chromArray = []
-        headNodeOffset = zoomOffset + 48 if zoomOffset else self.header.get("fullIndexOffset") + 48
+        headNodeOffset = self.zoomOffset + 48 if self.zoomOffset else self.header.get("fullIndexOffset") + 48
 
         chrmId = self.getId(f, chr)
-
+        if chrmId == None:
+            raise Exception("didn't find chromId with the given name")
         while start < end:
-            (start, sections) = self.locateTreeAverage(f, headNodeOffset, chrmId, start, end, zoomOffset)
+            (start, sections) = self.locateTreeAverage(f, headNodeOffset, chrmId, start, end)
+            if(start == None and sections == None):
+                raise Exception("With the given chr name, the range was not found")
             for section in sections:
                 chromArray.append(section)
         
         return chromArray
 
     def getId(self, f, chrmzone):
-        f.seek(self.header.get("chromTreeOffset"))
-        data = f.read(4)
-        treeMagic = struct.unpack(self.endian + "I", data)
-        treeMagic = treeMagic[0]
+        if not hasattr(self, 'chrmIds'):
+            self.chrmIds = {}
+            f.seek(self.header.get("chromTreeOffset"))
+            data = f.read(4)
+            treeMagic = struct.unpack(self.endian + "I", data)
+            treeMagic = treeMagic[0]
 
-        data = f.read(12)
-        (blockSize, keySize, valSize) = struct.unpack(self.endian + "III", data)
-        data = f.read(16)
-        (itemCount, treeReserved) = struct.unpack(self.endian + "QQ", data)
-        data = f.read(4)
+            data = f.read(12)
+            (blockSize, keySize, valSize) = struct.unpack(self.endian + "III", data)
+            data = f.read(16)
+            (itemCount, treeReserved) = struct.unpack(self.endian + "QQ", data)
+            data = f.read(4)
 
-        chrmId = -1
-        (isLeaf, nodeReserved, count) = struct.unpack(self.endian + "BBH", data) 
-        for y in range(0, count):
-            key = ""
-            for x in range(0, keySize):
-                data = f.read(1)
-                temp = struct.unpack(self.endian + "b", data) 
-                if chr(temp[0]) != "\x00":
-                    key += chr(temp[0])
-            if isLeaf == 1:
-                data = f.read(8)
-                (chromId, chromSize) = struct.unpack(self.endian + "II", data)
-                if key == chrmzone:
-                    chrmId = chromId
+            chrmId = -1
+            (isLeaf, nodeReserved, count) = struct.unpack(self.endian + "BBH", data) 
+            for y in range(0, count):
+                key = ""
+                for x in range(0, keySize):
+                    data = f.read(1)
+                    temp = struct.unpack(self.endian + "b", data) 
+                    if chr(temp[0]) != "\x00":
+                        key += chr(temp[0])
+                if isLeaf == 1:
+                    data = f.read(8)
+                    (chromId, chromSize) = struct.unpack(self.endian + "II", data)
+                    self.chrmIds[key] = chromId
 
-        if chrmId == -1:
-            raise Exception("InputError")
-
-        return chrmId
+        return self.chrmIds.get(chrmzone)
 
     # returns (startIndex, [(startIndex, endIndex, average)s])
     # the returned cRange is the final endIndex - startIndex - 1
-    def locateTreeAverage(self, f, rTree, chrmId, startIndex, endIndex, zoomOffset):
+    def locateTreeAverage(self, f, rTree, chrmId, startIndex, endIndex):
         offset = rTree
         i = 0
         node = self.readRtreeHeadNode(f, rTree)
@@ -154,25 +155,28 @@ class BigWig(BaseFile):
             # query this layer of rTree
             # if leaf layer
             if node["rStartChromIx"] > chrmId:
-                raise Exception("BadChromName")
+                break
             # rEndBase - 1 for inclusive range
-            elif node["rStartChromIx"] < chrmId or not (startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
-                offset = node["nextOff"]
-            else:
-                if isLeaf == 1:
-                    return self.grepSections(f, node["rdataOffset"], node["rDataSize"], startIndex, endIndex, zoomOffset)
+            elif node["rEndChromIx"] >= chrmId  and node["rStartChromIx"] <= chrmId:
+                if isLeaf == 1 and not (node["rStartChromIx"] == chrmId and startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
+                    offset = node["nextOff"]
+                elif isLeaf == 1:
+                    return self.grepSections(f, node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
                 elif isLeaf == 0:
+                    # do the recursive call
                     # jump to next layer
-                    offset = node["rdataOffset"]
-                    node = self.readRtreeHeadNode(f, offset)
-                    rCount = node["rCount"]
-                    isLeaf = node["rIsLeaf"]
-                    i = 0
+                    (start, content) = self.locateTreeAverage(f, node["rdataOffset"], chrmId, startIndex, endIndex)
+                    if start == None and content == None:
+                        offset = node["nextOff"]
+                    else:
+                        return(start, content)
                 else:
                     raise Exception("BadFileError")
+            else:
+                offset = node["nextOff"]
 
         # if didn't found the right intersection bad request
-        raise Exception("InputError")
+        return None, None
 
     def readRtreeNode(self, f, offset, isLeaf):
         f.seek(offset)
@@ -195,11 +199,11 @@ class BigWig(BaseFile):
         return self.readRtreeNode(f, offset, rIsLeaf)
 
     # returns (startIndex, [(startIndex, endIndex, average)s])
-    def grepSections(self, f, dataOffest, dataSize, startIndex, endIndex, zoomOffset):
+    def grepSections(self, f, dataOffest, dataSize, startIndex, endIndex):
         f.seek(dataOffest)
         data = f.read(dataSize)
         decom = zlib.decompress(data) if self.compressed else data
-        if zoomOffset:
+        if self.zoomOffset:
             result = []
             itemCount = len(decom)/32
         else:
@@ -209,7 +213,7 @@ class BigWig(BaseFile):
         x = 0
         while x < itemCount and startIndex < endIndex:
             # zoom summary
-            if zoomOffset:
+            if self.zoomOffset:
                 (_, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
                 x += 1
                 end -= 1
@@ -241,12 +245,13 @@ class BigWig(BaseFile):
             else:
                 result.append((startIndex, end, value))
                 startIndex = end + 1
+            x += 1
 
         return (startIndex, result)
 
     # parameter: start, end, array of (start, end, value)
     # return: mean of the values
-    def averageOfArray(start, end, averageArray):
+    def averageOfArray(self, start, end, averageArray):
         count = 0
         value = 0.0
 
