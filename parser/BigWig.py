@@ -1,6 +1,7 @@
 from .BaseFile import BaseFile
 import struct
 import zlib
+import math
 
 class BigWig(BaseFile):
     """
