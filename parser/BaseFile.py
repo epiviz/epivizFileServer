@@ -5,6 +5,8 @@
 import struct
 import zlib
 import requests
+import ujson
+
 
 class BaseFile(object):
     """
@@ -39,6 +41,9 @@ class BaseFile(object):
 
     def decompress_binary(self, bin_block):
         return zlib.decompress(bin_block)
+
+    def formatAsJSON(self, data):
+        return ujson.dumps(data)
 
     def read_bytes(self, start_index, byte_size):
         with open(self.file, "rb") as bin_file:
