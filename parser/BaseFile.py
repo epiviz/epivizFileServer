@@ -45,6 +45,13 @@ class BaseFile(object):
     def formatAsJSON(self, data):
         return ujson.dumps(data)
 
+    def get_bytes(self, offset, size):
+        f = open(self.file, "rb")
+        f.seek(offset)
+        bin_value = f.read(size)
+        f.close()
+        return bin_value
+
     def read_bytes(self, start_index, byte_size):
         with open(self.file, "rb") as bin_file:
             bin_file.seek(start_index)
