@@ -40,19 +40,31 @@ class BigWig(BaseFile):
                 "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
                 "uncompressBufSize" : uncompressBufSize}
 
+    def getTree(self):
+        if self.zoomOffset == 0:
+            return self.get_bytes(self.header["fullIndexOffset"], self.zooms[0][1] - self.header["fullIndexOffset"])
+        else:
+            for x in range(0, self.header["zoomLevels"]):
+                if self.zooms[x][1] == self.zoomOffset:
+                    return self.get_bytes(self.zooms[x][1], self.zooms[x][3]) if self.zooms[x][3] != -1 else self.get_bytes(self.zooms[x][1], self.zooms[0][1] - self.header["fullIndexOffset"])
+        raise Exception("ger tree error: this should not have happened")
+                
+
     def getRange(self, chr, start, end, points=2000, metric="AVG", respType = "JSON"):
-        if start == end:
+        if start >= end:
             raise Exception("InputError")
+        # in the case that points are greater than the range
+        points = (end - start) if points > (end - start) else points
 
         step = (end - start)*1.0/points
         self.zoomOffset = self.getZoom(start, end, step)
+        self.tree = self.getTree()
         mean = []
         startArray = []
         endArray = []
         start = start*1.0
 
         valueArray = self.getValues(chr, start, end)
-
         if metric is "AVG":
             metricFunc = self.averageOfArray
 
@@ -67,6 +79,7 @@ class BigWig(BaseFile):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
+        self.tree = None
         return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
 
     def getZoom(self, start, end, step):
@@ -76,7 +89,12 @@ class BigWig(BaseFile):
             for level in range(0, self.header.get("zoomLevels")):
                 ldata = data[level*24:(level+1)*24]
                 (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
-                self.zooms[level] = [reductionLevel, indexOffset]
+                self.zooms[level] = [reductionLevel, indexOffset, dataOffest]
+            # placeholder for the last zoom level
+            self.zooms[self.header.get("zoomLevels") - 1].append(-1)
+
+            for level in range(0, self.header.get("zoomLevels") - 1):
+                self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
         
         offset = 0
         distance = step**2
@@ -91,13 +109,14 @@ class BigWig(BaseFile):
     def getValues(self, chr, start, end):
 
         chromArray = []
-        headNodeOffset = self.zoomOffset + 48 if self.zoomOffset else self.header.get("fullIndexOffset") + 48
+        headNodeOffset = self.zoomOffset if self.zoomOffset else self.header.get("fullIndexOffset")
+        offset = 48
 
         chrmId = self.getId(chr)
         if chrmId == None:
             raise Exception("didn't find chromId with the given name")
         while start < end:
-            (start, sections) = self.locateTreeAverage(headNodeOffset, chrmId, start, end)
+            (start, sections) = self.locateTreeAverage(headNodeOffset, offset, chrmId, start, end)
             if(start == None and sections == None):
                 raise Exception("With the given chr name, the range was not found")
             for section in sections:
@@ -134,15 +153,14 @@ class BigWig(BaseFile):
 
     # returns (startIndex, [(startIndex, endIndex, average)s])
     # the returned cRange is the final endIndex - startIndex - 1
-    def locateTreeAverage(self, rTree, chrmId, startIndex, endIndex):
-        offset = rTree
+    def locateTreeAverage(self, startOffset, offset, chrmId, startIndex, endIndex):
         i = 0
-        node = self.readRtreeHeadNode(rTree)
+        node = self.readRtreeHeadNode(startOffset, offset)
         rCount = node["rCount"]
         isLeaf = node["rIsLeaf"]
         while i < rCount:
             i += 1
-            node = self.readRtreeNode(offset, isLeaf)
+            node = self.readRtreeNode(startOffset, offset, isLeaf)
             
             # query this layer of rTree
             # if leaf layer
@@ -151,42 +169,46 @@ class BigWig(BaseFile):
             # rEndBase - 1 for inclusive range
             elif node["rEndChromIx"] >= chrmId  and node["rStartChromIx"] <= chrmId:
                 if isLeaf == 1 and not (node["rStartChromIx"] == chrmId and startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
-                    offset = node["nextOff"]
+                    offset = node["nextOff"] - startOffset
                 elif isLeaf == 1:
                     return self.grepSections(node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
                 elif isLeaf == 0:
                     # do the recursive call
                     # jump to next layer
-                    (start, content) = self.locateTreeAverage(node["rdataOffset"], chrmId, startIndex, endIndex)
+                    (start, content) = self.locateTreeAverage(startOffset, node["rdataOffset"] - startOffset, chrmId, startIndex, endIndex)
                     if start == None and content == None:
-                        offset = node["nextOff"]
+                        offset = node["nextOff"] - startOffset
                     else:
                         return(start, content)
                 else:
                     raise Exception("BadFileError")
             else:
-                offset = node["nextOff"]
+                offset = node["nextOff"] - startOffset
 
         # if didn't found the right intersection bad request
         return None, None
 
-    def readRtreeNode(self, offset, isLeaf):
-        data = self.get_bytes(offset, 4)
+    def readRtreeNode(self, startOffset, offset, isLeaf):
+        # data = self.get_bytes(offset, 4)
+        data = self.tree[offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         if isLeaf:
-            data = self.get_bytes(offset + 4, 32)
+            # data = self.get_bytes(offset + 4, 32)
+            data = self.tree[offset + 4 : offset + 4 + 32]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
-            return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "rDataSize": rDataSize, "nextOff": offset + 32}
+            return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "rDataSize": rDataSize, "nextOff": startOffset + offset + 32}
         else:
-            data = self.get_bytes(offset + 4, 24)
+            # data = self.get_bytes(offset + 4, 24)
+            data = self.tree[offset + 4 : offset + 4 + 24]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
-            return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "nextOff": offset + 24}
+            return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "nextOff": startOffset + offset + 24}
 
     # read 1 r tree head node
-    def readRtreeHeadNode(self, offset):
-        data = self.get_bytes(offset, 4)
+    def readRtreeHeadNode(self, startOffset, offset):
+        # data = self.get_bytes(offset, 4)
+        data = self.tree[offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
-        return self.readRtreeNode(offset, rIsLeaf)
+        return self.readRtreeNode(startOffset, offset, rIsLeaf)
 
     # returns (startIndex, [(startIndex, endIndex, average)s])
     def grepSections(self, dataOffest, dataSize, startIndex, endIndex):
@@ -231,7 +253,7 @@ class BigWig(BaseFile):
             elif endIndex - 1 <= end:
                 result.append((startIndex, endIndex - 1, value))
                 startIndex = endIndex
-            else:
+            elif end > startIndex:
                 result.append((startIndex, end, value))
                 startIndex = end + 1
             x += 1
