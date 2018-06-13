@@ -54,11 +54,27 @@ class BigWig(BaseFile):
         if start >= end:
             raise Exception("InputError")
         # in the case that points are greater than the range
-        points = (end - start) if points > (end - start) else points
 
+        points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points
         self.zoomOffset = self.getZoom(start, end, step)
         self.tree = self.getTree()
+
+        # fix range if needs to
+        # chromId = self.getId(chr)
+        # startOffset = self.zoomOffset if self.zoomOffset else self.header.get("fullIndexOffset")
+        # print(self.chrmIds)
+        # print(self.zoomOffset)
+        # (startV, endV) = self.fixRange(startOffset, chromId, start, end)
+        # print(startV, endV)
+        # if startV != start or endV != end:
+        #     start = startV
+        #     end = endV
+        #     points = (end - start) if points > (end - start) else points
+        #     step = (end - start)*1.0/points
+        #     self.zoomOffset = self.getZoom(start, end, step)
+        #     self.tree = self.getTree()
+
         mean = []
         startArray = []
         endArray = []
@@ -80,7 +96,8 @@ class BigWig(BaseFile):
             formatFunc = self.formatAsJSON
 
         self.tree = None
-        return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
+        # return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
+        return valueArray
 
     def getZoom(self, start, end, step):
         if not hasattr(self, 'zooms'):
@@ -88,8 +105,8 @@ class BigWig(BaseFile):
             data = self.get_bytes(64, self.header.get("zoomLevels") * 24)
             for level in range(0, self.header.get("zoomLevels")):
                 ldata = data[level*24:(level+1)*24]
-                (reductionLevel, reserved, dataOffest, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
-                self.zooms[level] = [reductionLevel, indexOffset, dataOffest]
+                (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
+                self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
             # placeholder for the last zoom level
             self.zooms[self.header.get("zoomLevels") - 1].append(-1)
 
@@ -106,19 +123,85 @@ class BigWig(BaseFile):
 
         return offset
 
+    def fixRange(self, startOffset, chromId, start, end):
+        start = self.fixStartRange(startOffset, 48, chromId, start, end)
+        maxEnd = self.getMaxEnd(startOffset, 48, chromId)
+        end = maxEnd if maxEnd < end else end
+        return start, end
+
+    # re adjust the start index to the closest start point of that chrom if needed,
+    # return the value of the end point or return start if none is found
+    def fixStartRange(self, startOffset, offset, chromId, start, end):
+        i = 0
+        node = self.readRtreeHeadNode(startOffset, offset)
+        rCount = node["rCount"]
+        isLeaf = node["rIsLeaf"]
+        while i < rCount:
+            i += 1
+            node = self.readRtreeNode(startOffset, offset, isLeaf)
+            # query this layer of rTree
+            # if leaf layer
+            if node["rStartChromIx"] > chromId:
+                break
+            elif node["rEndChromIx"] >= chromId and node["rStartChromIx"] <= chromId:
+                if isLeaf == 1 and node["rStartChromIx"] == chromId and start <= node["rStartBase"]:
+                    return node["rStartBase"]
+                elif isLeaf == 1 and node["rStartChromIx"] == chromId and start > node["rStartBase"]:
+                    return start
+                elif isLeaf == 0:
+                    # do the recursive call
+                    # jump to next layer
+                    startV = self.fixStartRange(startOffset, node["rdataOffset"] - startOffset, chromId, start, end)
+                    if startV < end:
+                        return startV
+            offset = node["nextOff"] - startOffset
+        return end
+
+    # get Max end range for that chrom
+    def getMaxEnd(self, startOffset, offset, chromId):
+        i = 0
+        node = self.readRtreeHeadNode(startOffset, offset)
+        rCount = node["rCount"]
+        isLeaf = node["rIsLeaf"]
+        end = 0
+        while i < rCount:
+            i += 1
+            node = self.readRtreeNode(startOffset, offset, isLeaf)
+            # query this layer of rTree
+            # if leaf layer
+            print(node)
+            if node["rStartChromIx"] > chromId:
+                break
+            elif node["rEndChromIx"] >= chromId and node["rStartChromIx"] <= chromId:
+                if isLeaf == 1 and node["rStartChromIx"] == chromId:
+                    print(node["rEndBase"])
+                    end = node["rEndBase"] if node["rEndBase"] > end else end
+                elif isLeaf == 0:
+                    print("next layer")
+                    # do the recursive call
+                    # jump to next layer
+                    endV = self.getMaxEnd(startOffset, node["rdataOffset"] - startOffset, chromId)
+                    if endV > end:
+                        end = endV
+
+            offset = node["nextOff"] - startOffset
+        return end
+
     def getValues(self, chr, start, end):
 
         chromArray = []
-        headNodeOffset = self.zoomOffset if self.zoomOffset else self.header.get("fullIndexOffset")
+        startOffset = self.zoomOffset if self.zoomOffset else self.header.get("fullIndexOffset")
         offset = 48
 
         chrmId = self.getId(chr)
         if chrmId == None:
             raise Exception("didn't find chromId with the given name")
         while start < end:
-            (start, sections) = self.locateTreeAverage(headNodeOffset, offset, chrmId, start, end)
-            if(start == None and sections == None):
-                raise Exception("With the given chr name, the range was not found")
+            (startV, sections) = self.locateTreeAverage(startOffset, offset, chrmId, start, end)
+            if(startV == None and sections == []):
+                start += 1
+            else:
+                start = startV
             for section in sections:
                 chromArray.append(section)
         
@@ -161,32 +244,36 @@ class BigWig(BaseFile):
         while i < rCount:
             i += 1
             node = self.readRtreeNode(startOffset, offset, isLeaf)
-            
             # query this layer of rTree
             # if leaf layer
             if node["rStartChromIx"] > chrmId:
                 break
             # rEndBase - 1 for inclusive range
             elif node["rEndChromIx"] >= chrmId  and node["rStartChromIx"] <= chrmId:
-                if isLeaf == 1 and not (node["rStartChromIx"] == chrmId and startIndex >= node["rStartBase"] and startIndex < node["rEndBase"] - 1):
-                    offset = node["nextOff"] - startOffset
-                elif isLeaf == 1:
+                # in node that contains 1 chrom in range
+                if isLeaf == 1 and node["rStartChromIx"] == chrmId and node["rEndChromIx"] == chrmId and startIndex >= node["rStartBase"] and (startIndex < node["rEndBase"] - 1):
                     return self.grepSections(node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
+                # in node that contains 1 chrom but the given start range is less than the node range
+                elif isLeaf == 1 and node["rStartChromIx"] == chrmId and node["rEndChromIx"] == chrmId and startIndex < node["rStartBase"] and endIndex > node["rStartBase"]:
+                    return self.grepSections(node["rdataOffset"], node["rDataSize"], node["rStartBase"], endIndex)
+                # in node that contains 2 or more chroms, the accurate data is the start of the first chrom and the end of the last chrom.
+                # pure garbage
+                # but it should only happen in zoom datas
+                elif isLeaf == 1 and self.zoomOffset != 0:
+                    (startV, content) = self.grepZoomSections(node["rdataOffset"], node["rDataSize"], chrmId, startIndex, endIndex)
+                    if startV != startIndex and len(content) != 0:
+                        return (startV, content)
                 elif isLeaf == 0:
                     # do the recursive call
                     # jump to next layer
-                    (start, content) = self.locateTreeAverage(startOffset, node["rdataOffset"] - startOffset, chrmId, startIndex, endIndex)
-                    if start == None and content == None:
-                        offset = node["nextOff"] - startOffset
-                    else:
-                        return(start, content)
-                else:
-                    raise Exception("BadFileError")
-            else:
-                offset = node["nextOff"] - startOffset
+                    (startV, content) = self.locateTreeAverage(startOffset, node["rdataOffset"] - startOffset, chrmId, startIndex, endIndex)
+                    if startV != startIndex and len(content) != 0:
+                        return(startV, content)
+            
+            offset = node["nextOff"] - startOffset
 
         # if didn't found the right intersection bad request
-        return None, None
+        return None, []
 
     def readRtreeNode(self, startOffset, offset, isLeaf):
         # data = self.get_bytes(offset, 4)
@@ -210,9 +297,38 @@ class BigWig(BaseFile):
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return self.readRtreeNode(startOffset, offset, rIsLeaf)
 
+
+    def grepZoomSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
+        data = self.get_bytes(dataOffset, dataSize)
+        decom = zlib.decompress(data) if self.compressed else data
+        result = []
+        itemCount = len(decom)/32
+        x = 0
+
+        while x < itemCount and startIndex < endIndex:
+            (zoomChromID, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
+            x += 1
+            end -= 1
+            if zoomChromID == chrmId:
+                if start > endIndex:
+                    break
+                elif endIndex - 1 <= end:
+                    value = sumData / (end - start) # if was quering for something else this could change
+                    result.append((startIndex, endIndex - 1, value))
+                    startIndex = endIndex
+                elif end > startIndex:
+                    value = sumData / (end - start) # if was quering for something else this could change
+                    result.append((startIndex, end, value))
+                    startIndex = end + 1
+            x += 1
+
+        return (startIndex, result)
+
+    # data might not be continues*****
+    # need fix
     # returns (startIndex, [(startIndex, endIndex, average)s])
-    def grepSections(self, dataOffest, dataSize, startIndex, endIndex):
-        data = self.get_bytes(dataOffest, dataSize)
+    def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
+        data = self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
         if self.zoomOffset:
             result = []
@@ -225,7 +341,7 @@ class BigWig(BaseFile):
         while x < itemCount and startIndex < endIndex:
             # zoom summary
             if self.zoomOffset:
-                (_, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
+                (zoomChromID, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
                 x += 1
                 end -= 1
                 value = sumData / (end - start) # if was quering for something else this could change
