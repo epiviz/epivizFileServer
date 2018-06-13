@@ -50,14 +50,14 @@ class BigWig(BaseFile):
         raise Exception("ger tree error: this should not have happened")
                 
 
-    def getRange(self, chr, start, end, points=2000, metric="AVG", respType = "JSON"):
+    def getRange(self, chr, start, end, points=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         if start >= end:
             raise Exception("InputError")
         # in the case that points are greater than the range
 
         points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points
-        self.zoomOffset = self.getZoom(start, end, step)
+        self.zoomOffset = self.getZoom(start, end, step, zoomlvl)
         self.tree = self.getTree()
 
         # fix range if needs to
@@ -99,27 +99,36 @@ class BigWig(BaseFile):
         # return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
         return valueArray
 
-    def getZoom(self, start, end, step):
+    def getZoom(self, start, end, step, zoomlvl):
         if not hasattr(self, 'zooms'):
             self.zooms = {}
-            data = self.get_bytes(64, self.header.get("zoomLevels") * 24)
-            for level in range(0, self.header.get("zoomLevels")):
-                ldata = data[level*24:(level+1)*24]
+            totalLevels = self.header.get("zoomLevels")
+            data = self.get_bytes(64, totalLevels * 24)
+            for level in range(0, totalLevels):
+                ldata = data[level*24:(level + 1)*24]
                 (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
                 self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
-            # placeholder for the last zoom level
-            self.zooms[self.header.get("zoomLevels") - 1].append(-1)
-
-            for level in range(0, self.header.get("zoomLevels") - 1):
+            # buffer placeholder for the last zoom level
+            self.zooms[totalLevels - 1].append(-1)
+            # set buffer size for othere zoom levels
+            for level in range(0, totalLevels - 1):
                 self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
-        
+
         offset = 0
-        distance = step**2
-        for level in self.zooms:
-            newDis = ((self.zooms[level][0] - step)*1.0) ** 2
-            if newDis < distance:
-                    distance = newDis
-                    offset = self.zooms[level][1]
+
+        if zoomlvl > totalLevels or zoomlvl < -1:
+            zoomlvl = -1
+
+        if zoomlvl == -1:
+            distance = step**2
+            for level in self.zooms:
+                newDis = ((self.zooms[level][0] - step)*1.0) ** 2
+                if newDis < distance:
+                        distance = newDis
+                        offset = self.zooms[level][1]
+        # if it is not zero
+        elif zoomlvl:
+            offset = self.zooms[zoomlvl - 1][1]
 
         return offset
 
@@ -251,7 +260,8 @@ class BigWig(BaseFile):
             # rEndBase - 1 for inclusive range
             elif node["rEndChromIx"] >= chrmId  and node["rStartChromIx"] <= chrmId:
                 # in node that contains 1 chrom in range
-                if isLeaf == 1 and node["rStartChromIx"] == chrmId and node["rEndChromIx"] == chrmId and startIndex >= node["rStartBase"] and (startIndex < node["rEndBase"] - 1):
+                if isLeaf == 1 and node["rStartChromIx"] == chrmId and node["rEndChromIx"] == chrmId and startIndex >= node["rStartBase"] and startIndex < node["rEndBase"]:
+                    (startV, content) = self.grepSections(node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
                     return self.grepSections(node["rdataOffset"], node["rDataSize"], startIndex, endIndex)
                 # in node that contains 1 chrom but the given start range is less than the node range
                 elif isLeaf == 1 and node["rStartChromIx"] == chrmId and node["rEndChromIx"] == chrmId and startIndex < node["rStartBase"] and endIndex > node["rStartBase"]:
@@ -311,7 +321,7 @@ class BigWig(BaseFile):
             end -= 1
             if zoomChromID == chrmId:
                 if start > endIndex:
-                    break
+                    pass
                 elif endIndex - 1 <= end:
                     value = sumData / (end - start) # if was quering for something else this could change
                     result.append((startIndex, endIndex - 1, value))
@@ -342,7 +352,6 @@ class BigWig(BaseFile):
             # zoom summary
             if self.zoomOffset:
                 (zoomChromID, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
-                x += 1
                 end -= 1
                 value = sumData / (end - start) # if was quering for something else this could change
             # bedgraph   
@@ -365,7 +374,7 @@ class BigWig(BaseFile):
                 raise Exception("BadFileError")
 
             if start > endIndex:
-                break
+                pass
             elif endIndex - 1 <= end:
                 result.append((startIndex, endIndex - 1, value))
                 startIndex = endIndex
