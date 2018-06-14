@@ -99,7 +99,7 @@ class BigWig(BaseFile):
         # return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
         return valueArray
 
-    def getZoom(self, start, end, step, zoomlvl):
+    def getZoom(self, start, end, step, zoomlvl = -1):
         if not hasattr(self, 'zooms'):
             self.zooms = {}
             totalLevels = self.header.get("zoomLevels")
@@ -208,7 +208,7 @@ class BigWig(BaseFile):
         while start < end:
             (startV, sections) = self.locateTreeAverage(startOffset, offset, chrmId, start, end)
             if(startV == None and sections == []):
-                start += 1
+                break
             else:
                 start = startV
             for section in sections:
@@ -219,13 +219,13 @@ class BigWig(BaseFile):
     def getId(self, chrmzone):
         if not hasattr(self, 'chrmIds'):
             self.chrmIds = {}
-
-            data = self.get_bytes(self.header.get("chromTreeOffset"), 36)
+            chromosomeTreeOffset = self.header.get("chromTreeOffset")
+            data = self.get_bytes(chromosomeTreeOffset, 36)
 
             (treeMagic, blockSize, keySize, valSize, itemCount, treeReserved, isLeaf, nodeReserved, count) = struct.unpack(self.endian + "IIIIQQBBH", data)
             chrmId = -1
 
-            data = self.get_bytes(self.header.get("chromTreeOffset") + 36, count*(keySize + 8))
+            data = self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
 
             for y in range(0, count):
                 key = ""
@@ -270,7 +270,7 @@ class BigWig(BaseFile):
                 # pure garbage
                 # but it should only happen in zoom datas
                 elif isLeaf == 1 and self.zoomOffset != 0:
-                    (startV, content) = self.grepZoomSections(node["rdataOffset"], node["rDataSize"], chrmId, startIndex, endIndex)
+                    (startV, content) = self.grepAnnoyingSections(node["rdataOffset"], node["rDataSize"], chrmId, startIndex, endIndex)
                     if startV != startIndex and len(content) != 0:
                         return (startV, content)
                 elif isLeaf == 0:
@@ -308,7 +308,7 @@ class BigWig(BaseFile):
         return self.readRtreeNode(startOffset, offset, rIsLeaf)
 
 
-    def grepZoomSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
+    def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
         data = self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
         result = []
@@ -334,8 +334,6 @@ class BigWig(BaseFile):
 
         return (startIndex, result)
 
-    # data might not be continues*****
-    # need fix
     # returns (startIndex, [(startIndex, endIndex, average)s])
     def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
         data = self.get_bytes(dataOffset, dataSize)
