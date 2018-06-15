@@ -78,29 +78,24 @@ class BigWig(BaseFile):
         #     self.zoomOffset = self.getZoom(start, end, step)
         #     self.tree = self.getTree()
 
-        mean = []
+        value = []
         startArray = []
         endArray = []
-        start = start*1.0
 
         valueArray = self.getValues(chr, start, end)
-        if metric is "AVG":
-            metricFunc = self.averageOfArray
+        # if metric is "AVG":
+        #     metricFunc = self.averageOfArray
 
-        while start < end:
-            t_end = math.floor(start + step)
-            t_end = end * 1.0 if (end - t_end) < step else t_end
-            startArray.append(start)
-            endArray.append(t_end)
-            mean.append(metricFunc(start, t_end, valueArray))
-            start = t_end
+        for item in valueArray:
+            startArray.append(item[0])
+            endArray.append(item[1])
+            value.append(item[2])
 
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
         self.tree = None
-        # return formatFunc({"start" : startArray, "end" : endArray, "values": mean})
-        return valueArray
+        return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     def getZoom(self, start, end, step, zoomlvl = -1):
         if not hasattr(self, 'zooms'):
@@ -327,11 +322,17 @@ class BigWig(BaseFile):
                     pass
                 elif endIndex - 1 <= end:
                     value = sumData / (end - start) # if was quering for something else this could change
-                    result.append((startIndex, endIndex - 1, value))
+                    # for exclusive endIndex return
+                    result.append((startIndex, endIndex, value))
+                    # for inclusive endIndex return
+                    # result.append((startIndex, endIndex - 1, value))
                     startIndex = endIndex
                 elif end > startIndex:
                     value = sumData / (end - start) # if was quering for something else this could change
-                    result.append((startIndex, end, value))
+                    # for exclusive endIndex return
+                    result.append((startIndex, end + 1, value))
+                    # for inclusive endIndex return
+                    # result.append((startIndex, end, value))
                     startIndex = end + 1
             x += 1
 
@@ -377,10 +378,16 @@ class BigWig(BaseFile):
             if start > endIndex:
                 pass
             elif endIndex - 1 <= end:
-                result.append((startIndex, endIndex - 1, value))
+                # for exclusive endIndex return
+                result.append((startIndex, endIndex, value))
+                # for inclusive endIndex return
+                # result.append((startIndex, endIndex - 1, value))
                 startIndex = endIndex
             elif end > startIndex:
-                result.append((startIndex, end, value))
+                # for exclusive endIndex return
+                result.append((startIndex, end + 1, value))
+                # for inclusive endIndex return
+                # result.append((startIndex, end, value))
                 startIndex = end + 1
             x += 1
 
