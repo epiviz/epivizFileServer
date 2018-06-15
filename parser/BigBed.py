@@ -1,11 +1,13 @@
 from .BigWig import BigWig
+import struct
+import zlib
+import math
 
 class BigBed(BigWig):
     """
         File BigBed class
     """
     magic = "0x8789F2EB"
-
     def __init__(self, file):
         super(BigBed, self).__init__(file)
         self.zoomOffset = 0
@@ -18,7 +20,6 @@ class BigBed(BigWig):
         valueArray = self.getValues(chr, start, end)
 
         return valueArray
-
 
     # placeholder because of super function
     def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
@@ -57,7 +58,7 @@ class BigBed(BigWig):
         x = 0
         length = len(decom)
 
-        while x < length:
+        while x < length and startIndex < endIndex:
             (chromId, start, end) = struct.unpack("III", decom[x:x + 12])
             x += 11
             value = ""
