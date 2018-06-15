@@ -7,6 +7,7 @@ class BigWig(BaseFile):
     """
         File BigWig class
     """
+    magic = "0x888FFC26"
 
     def __init__(self, file):
         super(BigWig, self).__init__(file)
@@ -14,9 +15,9 @@ class BigWig(BaseFile):
         data = self.get_bytes(0, 4)
 
         # parse magic code for byteswap
-        if struct.unpack("I", data)[0] == int("0x888FFC26", 0):
+        if struct.unpack("I", data)[0] == int(self.__class__.magic, 0):
             self.endian = "="
-        elif struct.unpack("<I", data)[0] == int("0x888FFC26", 0):
+        elif struct.unpack("<I", data)[0] == int(self.__class__.magic, 0):
             self.endian = "<"
         else:
             raise Exception("BadFileError")
@@ -42,7 +43,9 @@ class BigWig(BaseFile):
 
     def getTree(self):
         if self.zoomOffset == 0:
-            return self.get_bytes(self.header["fullIndexOffset"], self.zooms[0][1] - self.header["fullIndexOffset"])
+            (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
+                rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
+            return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
         else:
             for x in range(0, self.header["zoomLevels"]):
                 if self.zooms[x][1] == self.zoomOffset:
@@ -207,7 +210,7 @@ class BigWig(BaseFile):
             raise Exception("didn't find chromId with the given name")
         while start < end:
             (startV, sections) = self.locateTreeAverage(startOffset, offset, chrmId, start, end)
-            if(startV == None and sections == []):
+            if sections == []:
                 break
             else:
                 start = startV
