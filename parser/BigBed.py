@@ -49,7 +49,8 @@ class BigBed(BigWig):
                 value = ""
                 while x < length and not decom[x + 1] == "\0":
                     x += 1
-                    value += chr(struct.unpack("b", decom[x])[0])
+                    # need to change if switched to python 3
+                    value += (decom[x])
                 x += 2
                 if start > endIndex:
                     pass
@@ -71,6 +72,7 @@ class BigBed(BigWig):
         result = []
         x = 0
         length = len(decom)
+        print(decom)
 
         while x < length and startIndex < endIndex:
             (chromId, start, end) = struct.unpack("III", decom[x:x + 12])
@@ -78,7 +80,8 @@ class BigBed(BigWig):
             value = ""
             while x < length and not decom[x + 1] == "\0":
                 x += 1
-                value += chr(struct.unpack("b", decom[x])[0])
+                # need to change if switched to python 3
+                value += (decom[x])
             x += 2
             if start > endIndex:
                 pass
