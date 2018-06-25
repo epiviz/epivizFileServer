@@ -31,3 +31,7 @@ def getBigBedData():
 	endIndex = int(request.args.get('end'))
 	result = ph.handleBigBed(fileName, chrom, startIndex, endIndex)
 	return str(result)
+
+@app.route("/manager")
+def printManager():
+	return ph.printManager()
