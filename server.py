@@ -1,25 +1,33 @@
 from flask import Flask, request, g
-from handler import ProcessHandler
+from handler import FileHandler
 app = Flask(__name__)
+ph = None
 
 @app.before_first_request
 def startup():
-    g.ph = ProcessHandler()
-    print("ProcessHandler created")
+    global ph
+    ph = FileHandler()
+    print("FileHandler created")
 
 @app.route("/")
 def hello():
     return "Hello World!"
 
-@app.route("/getdata")
+@app.route("/getBigWigData")
 def getBigWigData():
 	fileName = request.args.get('name')
 	chrom = request.args.get('chr')
 	startIndex = int(request.args.get('start'))
 	endIndex = int(request.args.get('end'))
 	points = int(request.args.get('points')) if request.args.get('points') != None else 2000
-	result = g.ph.handleBigWig(fileName, chrom, startIndex, endIndex, points)
-	
+	result = ph.handleBigWig(fileName, chrom, startIndex, endIndex, points)
 	return str(result)
-	# return str(fileName, chrom, startIndex, endIndex, points)
-	# return request.query_string
+
+@app.route("/getBigBedData")
+def getBigBedData():
+	fileName = request.args.get('name')
+	chrom = request.args.get('chr')
+	startIndex = int(request.args.get('start'))
+	endIndex = int(request.args.get('end'))
+	result = ph.handleBigBed(fileName, chrom, startIndex, endIndex)
+	return str(result)

@@ -12,14 +12,28 @@ class BigBed(BigWig):
         super(BigBed, self).__init__(file)
         self.zoomOffset = 0
 
-    def getRange(self, chr, start, end):
+    def getRange(self, chr, start, end, respType = "JSON"):
         if start >= end:
             raise Exception("InputError")
 
         self.tree = self.getTree()
+
+        value = []
+        startArray = []
+        endArray = []
+
         valueArray = self.getValues(chr, start, end)
 
-        return valueArray
+        for item in valueArray:
+            startArray.append(item[0])
+            endArray.append(item[1])
+            value.append(item[2])
+
+        if respType is "JSON":
+            formatFunc = self.formatAsJSON
+
+        self.tree = None
+        return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     # placeholder because of super function
     def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
@@ -72,9 +86,15 @@ class BigBed(BigWig):
             if start > endIndex:
                 pass
             elif endIndex - 1 <= end:
-                result.append((startIndex, endIndex - 1, value))
+                # for exclusive endIndex return
+                result.append((startIndex, endIndex, value))
+                # for inclusive endIndex return
+                # result.append((startIndex, endIndex - 1, value))
                 startIndex = endIndex
             elif end > startIndex:
-                result.append((startIndex, end, value))
+                # for exclusive endIndex return
+                result.append((startIndex, end + 1, value))
+                # for inclusive endIndex return
+                # result.append((startIndex, end, value))
                 startIndex = end + 1
         return startIndex, result
