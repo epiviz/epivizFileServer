@@ -113,7 +113,7 @@ class BigWig(BaseFile):
                 self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
 
         offset = 0
-
+        totalLevels = self.header.get("zoomLevels")
         if zoomlvl > totalLevels or zoomlvl < -1:
             zoomlvl = -1
 

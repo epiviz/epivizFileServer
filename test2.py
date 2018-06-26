@@ -20,4 +20,4 @@ import cProfile
 print("############ remote file initialization ####################")
 test = BigBed("https://obj.umiacs.umd.edu/bigwig-files/100transcripts_bed4plus_bonus_as.bb")
 print("############ remote file getRange ####################")
-print(test.getRange("chrI", 1, 110000000))
+print(test.getRange("chrII", 1, 110000000))
