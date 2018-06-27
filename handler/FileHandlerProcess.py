@@ -31,8 +31,8 @@ class BieBedProcess(FileProcess):
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
     def __init__(self):
-        self.manager = Manager()
-        self.dict = self.manager.dict()
+        # self.manager = Manager()
+        # self.dict = self.manager.dict()
         self.record = {}
         self.ManagerLock = Lock()
 
