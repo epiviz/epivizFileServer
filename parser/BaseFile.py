@@ -5,9 +5,10 @@
 import struct
 import zlib
 # import requests
-import grequests 
+from requests_futures.sessions import FuturesSession
 import ujson
 
+session = FuturesSession(max_workers=10)
 
 class BaseFile(object):
     """
@@ -50,7 +51,7 @@ class BaseFile(object):
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
             # resp = requests.get(self.file, headers=headers)
-            resp = await grequests.map(grequests.get(self.file, headers=headers))
+            resp = session.get(self.file, headers=headers).result()
             # use requests.codes.ok instead
             if resp.status_code != 206:
                 raise Exception("URLError")
