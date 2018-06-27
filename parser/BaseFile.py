@@ -4,7 +4,8 @@
 
 import struct
 import zlib
-import requests
+# import requests
+import grequests 
 import ujson
 
 
@@ -48,7 +49,8 @@ class BaseFile(object):
             return bin_value
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
-            resp = requests.get(self.file, headers=headers)
+            # resp = requests.get(self.file, headers=headers)
+            resp = await grequests.map(grequests.get(self.file, headers=headers))
             # use requests.codes.ok instead
             if resp.status_code != 206:
                 raise Exception("URLError")
