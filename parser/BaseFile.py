@@ -39,7 +39,7 @@ class BaseFile(object):
     def formatAsJSON(self, data):
         return ujson.dumps(data)
 
-    def get_bytes(self, offset, size):
+    async def get_bytes(self, offset, size):
         if self.local:
             f = open(self.file, "rb")
             f.seek(offset)

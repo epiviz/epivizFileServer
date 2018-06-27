@@ -45,10 +45,10 @@ class FileHandlerProcess(object):
         self.ManagerLock.release()
 
     async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points):
-        return fileObj.getRange(chrom, startIndex, endIndex, points)
+        return await fileObj.getRange(chrom, startIndex, endIndex, points)
 
     async def bigbedWrapper(self, fileObj, chrom, startIndex, endIndex):
-        return fileObj.getRange(chrom, startIndex, endIndex)
+        return await fileObj.getRange(chrom, startIndex, endIndex)
 
     async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
         if self.record.get(fileName) == None:
