@@ -17,7 +17,7 @@ async def test(request):
     return json({"hello": "world"})
 
 @app.route("/getBigWigData")
-def getBigWigData(request):
+async def getBigWigData(request):
 	fileName = request.args.get('name')
 	chrom = request.args.get('chr')
 	startIndex = int(request.args.get('start'))
@@ -27,7 +27,7 @@ def getBigWigData(request):
 	return response.text(str(result))
 
 @app.route("/getBigBedData")
-def getBigBedData(request):
+async def getBigBedData(request):
 	fileName = request.args.get('name')
 	chrom = request.args.get('chr')
 	startIndex = int(request.args.get('start'))
@@ -35,9 +35,9 @@ def getBigBedData(request):
 	result = ph.handleBigBed(fileName, chrom, startIndex, endIndex)
 	return response.text(str(result))
 
-@app.route("/manager")
-def printManager(request):
-	return response.text(ph.printManager())
+@app.route("/record")
+def printRecord(request):
+	return response.text(ph.printRecord())
 
 @app.route("/request")
 def printRequest(request):
