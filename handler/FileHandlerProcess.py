@@ -28,7 +28,7 @@ class BieBedProcess(FileProcess):
         super(BieBedProcess, self).__init__(fileName, fileType)
 
 
-class FileHandler(object):
+class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
     def __init__(self):
         self.manager = Manager()
@@ -39,31 +39,35 @@ class FileHandler(object):
     def printRecord(self):
         return str(self.record)
 
-    def setManager(self, fileName, fileLock):
+    def setManager(self, fileName, fileObj):
         self.ManagerLock.acquire()
-        self.record[fileName] = fileLock
+        self.record[fileName] = fileObj
         self.ManagerLock.release()
 
-    def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
-        if self.record.get(fileName) == None:
-            l = Lock()
-            self.setManager(fileName, fileLock)
-            
+    async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points):
+        return fileObj.getRange(chrom, startIndex, endIndex, points)
+
+    async def bigbedWrapper(self, fileObj, chrom, startIndex, endIndex):
+        return fileObj.getRange(chrom, startIndex, endIndex)
+
+    async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
         if self.record.get(fileName) == None:
             # p = Process(target=f, args=(d, l))
-            p = BieWigProcess(fileName, "BW")
-            self.setManager(fileName, p)
+            # p = BieWigProcess(fileName, "BW")
+            bigwig = BigWig(fileName)
+            self.setManager(fileName, bigwig)
         else:
-            p = self.record[fileName]
+            bigwig = self.record[fileName]
         # p.start(chrom, startIndex, endIndex, points)
-        return str(p)
+        return await self.bigwigWrapper(bigwig, chrom, startIndex, endIndex, points)
 
-    def handleBigBed(self, fileName, chrom, startIndex, endIndex):
+    async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
         if self.record.get(fileName) == None:
-            p = BieBedProcess(fileName, "BB")
-            self.setManager(fileName, p)
+            # p = BieBedProcess(fileName, "BB")
+            bigbed = BigBed(fileName)
+            self.setManager(fileName, bigbed)
         else:
-            p = self.record[fileName]
+            bigbed = self.record[fileName]
         # r.start(chrom, startIndex, endIndex)
-        return str(p)
+        return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex)
     

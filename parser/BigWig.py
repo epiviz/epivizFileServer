@@ -1,6 +1,8 @@
 from .BaseFile import BaseFile
+from multiprocessing import Lock
 import struct
 import zlib
+import os
 import math
 
 class BigWig(BaseFile):
@@ -11,6 +13,11 @@ class BigWig(BaseFile):
 
     def __init__(self, file):
         super(BigWig, self).__init__(file)
+
+        self.writeLockChrm = Lock()
+        self.writeLockZoom = Lock()
+        self.tree = {}
+        self.zoomOffset = {}
 
         data = self.get_bytes(0, 4)
 
@@ -42,15 +49,16 @@ class BigWig(BaseFile):
                 "uncompressBufSize" : uncompressBufSize}
 
     def getTree(self):
-        if self.zoomOffset == 0:
+        if self.zoomOffset[os.getpid()] == 0:
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
                 rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
             return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
         else:
             for x in range(0, self.header["zoomLevels"]):
-                if self.zooms[x][1] == self.zoomOffset:
+                if self.zooms[x][1] == self.zoomOffset[os.getpid()]:
                     return self.get_bytes(self.zooms[x][1], self.zooms[x][3]) if self.zooms[x][3] != -1 else self.get_bytes(self.zooms[x][1], self.zooms[0][1] - self.header["fullIndexOffset"])
-        raise Exception("ger tree error: this should not have happened")
+        
+        raise Exception("get tree error: this should not have happened")
                 
 
     def getRange(self, chr, start, end, points=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
@@ -60,8 +68,8 @@ class BigWig(BaseFile):
 
         points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points
-        self.zoomOffset = self.getZoom(start, end, step, zoomlvl)
-        self.tree = self.getTree()
+        self.zoomOffset[os.getpid()] = self.getZoom(start, end, step, zoomlvl)
+        self.tree[os.getpid()] = self.getTree()
 
         # fix range if needs to
         # chromId = self.getId(chr)
@@ -94,10 +102,11 @@ class BigWig(BaseFile):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
-        self.tree = None
+        self.tree[os.getpid()] = None
         return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     def getZoom(self, start, end, step, zoomlvl = -1):
+        self.writeLockZoom.acquire()
         if not hasattr(self, 'zooms'):
             self.zooms = {}
             totalLevels = self.header.get("zoomLevels")
@@ -111,6 +120,7 @@ class BigWig(BaseFile):
             # set buffer size for othere zoom levels
             for level in range(0, totalLevels - 1):
                 self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
+        self.writeLockZoom.release()
 
         offset = 0
         totalLevels = self.header.get("zoomLevels")
@@ -176,15 +186,12 @@ class BigWig(BaseFile):
             node = self.readRtreeNode(startOffset, offset, isLeaf)
             # query this layer of rTree
             # if leaf layer
-            print(node)
             if node["rStartChromIx"] > chromId:
                 break
             elif node["rEndChromIx"] >= chromId and node["rStartChromIx"] <= chromId:
                 if isLeaf == 1 and node["rStartChromIx"] == chromId:
-                    print(node["rEndBase"])
                     end = node["rEndBase"] if node["rEndBase"] > end else end
                 elif isLeaf == 0:
-                    print("next layer")
                     # do the recursive call
                     # jump to next layer
                     endV = self.getMaxEnd(startOffset, node["rdataOffset"] - startOffset, chromId)
@@ -197,7 +204,7 @@ class BigWig(BaseFile):
     def getValues(self, chr, start, end):
 
         chromArray = []
-        startOffset = self.zoomOffset if self.zoomOffset else self.header.get("fullIndexOffset")
+        startOffset = self.zoomOffset[os.getpid()] if self.zoomOffset[os.getpid()] else self.header.get("fullIndexOffset")
         offset = 48
 
         chrmId = self.getId(chr)
@@ -215,6 +222,7 @@ class BigWig(BaseFile):
         return chromArray
 
     def getId(self, chrmzone):
+        self.writeLockChrm.acquire()
         if not hasattr(self, 'chrmIds'):
             self.chrmIds = {}
             chromosomeTreeOffset = self.header.get("chromTreeOffset")
@@ -238,6 +246,7 @@ class BigWig(BaseFile):
                     idata = data[dataIndex:dataIndex+8]
                     (chromId, chromSize) = struct.unpack(self.endian + "II", idata)
                     self.chrmIds[key] = chromId
+        self.writeLockChrm.release()
 
         return self.chrmIds.get(chrmzone)
 
@@ -285,23 +294,23 @@ class BigWig(BaseFile):
 
     def readRtreeNode(self, startOffset, offset, isLeaf):
         # data = self.get_bytes(offset, 4)
-        data = self.tree[offset:offset + 4]
+        data = self.tree[os.getpid()][offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         if isLeaf:
             # data = self.get_bytes(offset + 4, 32)
-            data = self.tree[offset + 4 : offset + 4 + 32]
+            data = self.tree[os.getpid()][offset + 4 : offset + 4 + 32]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
             return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "rDataSize": rDataSize, "nextOff": startOffset + offset + 32}
         else:
             # data = self.get_bytes(offset + 4, 24)
-            data = self.tree[offset + 4 : offset + 4 + 24]
+            data = self.tree[os.getpid()][offset + 4 : offset + 4 + 24]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
             return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "nextOff": startOffset + offset + 24}
 
     # read 1 r tree head node
     def readRtreeHeadNode(self, startOffset, offset):
         # data = self.get_bytes(offset, 4)
-        data = self.tree[offset:offset + 4]
+        data = self.tree[os.getpid()][offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return self.readRtreeNode(startOffset, offset, rIsLeaf)
 
@@ -342,7 +351,7 @@ class BigWig(BaseFile):
     def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
         data = self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
-        if self.zoomOffset:
+        if self.zoomOffset[os.getpid()]:
             result = []
             itemCount = len(decom)/32
         else:
@@ -352,7 +361,7 @@ class BigWig(BaseFile):
         x = 0
         while x < itemCount and startIndex < endIndex:
             # zoom summary
-            if self.zoomOffset:
+            if self.zoomOffset[os.getpid()]:
                 (zoomChromID, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
                 end -= 1
                 value = sumData / (end - start) # if was quering for something else this could change
