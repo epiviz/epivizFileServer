@@ -10,13 +10,15 @@ class BigBed(BigWig):
     magic = "0x8789F2EB"
     def __init__(self, file):
         super(BigBed, self).__init__(file)
-        self.zoomOffset = 0
+        # self.zoomOffset = 0
+        self.zoomOffset[os.getpid()] = 0
 
     def getRange(self, chr, start, end, respType = "JSON"):
         if start >= end:
             raise Exception("InputError")
 
-        self.tree = self.getTree()
+        self.tree[os.getpid()] = self.getTree()
+        # self.tree = self.getTree()
 
         value = []
         startArray = []
@@ -32,7 +34,8 @@ class BigBed(BigWig):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
-        self.tree = None
+        self.tree[os.getpid()] = None
+        # self.tree = None
         return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     # placeholder because of super function
@@ -72,7 +75,6 @@ class BigBed(BigWig):
         result = []
         x = 0
         length = len(decom)
-        print(decom)
 
         while x < length and startIndex < endIndex:
             (chromId, start, end) = struct.unpack("III", decom[x:x + 12])

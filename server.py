@@ -1,6 +1,6 @@
 from sanic import Sanic, Blueprint, response
 from sanic.response import json
-from handler import FileHandler
+from handler import FileHandlerProcess
 app = Sanic()
 ph = None
 bp = Blueprint('my_blueprint')
@@ -9,7 +9,7 @@ app.blueprint(bp)
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
     global ph
-    ph = FileHandler()
+    ph = FileHandlerProcess()
     print("FileHandler created")
 
 @app.route("/")
@@ -23,7 +23,7 @@ async def getBigWigData(request):
 	startIndex = int(request.args.get('start'))
 	endIndex = int(request.args.get('end'))
 	points = int(request.args.get('points')) if request.args.get('points') != None else 2000
-	result = ph.handleBigWig(fileName, chrom, startIndex, endIndex, points)
+	result = await ph.handleBigWig(fileName, chrom, startIndex, endIndex, points)
 	return response.text(str(result))
 
 @app.route("/getBigBedData")
@@ -32,7 +32,7 @@ async def getBigBedData(request):
 	chrom = request.args.get('chr')
 	startIndex = int(request.args.get('start'))
 	endIndex = int(request.args.get('end'))
-	result = ph.handleBigBed(fileName, chrom, startIndex, endIndex)
+	result = await ph.handleBigBed(fileName, chrom, startIndex, endIndex)
 	return response.text(str(result))
 
 @app.route("/record")
