@@ -13,18 +13,21 @@ class BigBed(BigWig):
         # self.zoomOffset = 0
         self.zoomOffset[os.getpid()] = 0
 
-    def getRange(self, chr, start, end, respType = "JSON"):
+    async def getRange(self, chr, start, end, respType = "JSON"):
+        if not hasattr(self, 'header'):
+            await self.getHeader()
+
         if start >= end:
             raise Exception("InputError")
 
-        self.tree[os.getpid()] = self.getTree()
+        self.tree[os.getpid()] = await self.getTree()
         # self.tree = self.getTree()
 
         value = []
         startArray = []
         endArray = []
 
-        valueArray = self.getValues(chr, start, end)
+        valueArray = await self.getValues(chr, start, end)
 
         for item in valueArray:
             startArray.append(item[0])
@@ -39,8 +42,8 @@ class BigBed(BigWig):
         return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     # placeholder because of super function
-    def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
-        data = self.get_bytes(dataOffset, dataSize)
+    async def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
+        data = await self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
         result = []
         x = 0
@@ -69,8 +72,8 @@ class BigBed(BigWig):
                 x += 2
         return startIndex, result
 
-    def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
-        data = self.get_bytes(dataOffset, dataSize)
+    async def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
+        data = await self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
         result = []
         x = 0
