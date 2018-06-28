@@ -19,6 +19,14 @@ class BigWig(BaseFile):
         self.tree = {}
         self.zoomOffset = {}
 
+    def clearLock(self):
+        self.writeLockChrm = None
+        self.writeLockZoom = None
+
+    def reinitLock(self):
+        self.writeLockChrm = Lock()
+        self.writeLockZoom = Lock()
+
     async def parse_header(self):
         # parse header
 
@@ -70,7 +78,9 @@ class BigWig(BaseFile):
         points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points
         self.zoomOffset[os.getpid()] = await self.getZoom(start, end, step, zoomlvl)
-        self.tree[os.getpid()] = await self.getTree()
+        if self.tree.get(self.zoomOffset[os.getpid()]) == None:
+            self.tree[self.zoomOffset[os.getpid()]] = await self.getTree()
+       
 
         # fix range if needs to
         # chromId = self.getId(chr)
@@ -103,7 +113,6 @@ class BigWig(BaseFile):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
-        self.tree[os.getpid()] = None
         return formatFunc({"start" : startArray, "end" : endArray, "values": value})
 
     async def getZoom(self, start, end, step, zoomlvl = -1):
@@ -294,23 +303,23 @@ class BigWig(BaseFile):
 
     async def readRtreeNode(self, startOffset, offset, isLeaf):
         # data = self.get_bytes(offset, 4)
-        data = self.tree[os.getpid()][offset:offset + 4]
+        data = self.tree[self.zoomOffset[os.getpid()]][offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         if isLeaf:
             # data = self.get_bytes(offset + 4, 32)
-            data = self.tree[os.getpid()][offset + 4 : offset + 4 + 32]
+            data = self.tree[self.zoomOffset[os.getpid()]][offset + 4 : offset + 4 + 32]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
             return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "rDataSize": rDataSize, "nextOff": startOffset + offset + 32}
         else:
             # data = self.get_bytes(offset + 4, 24)
-            data = self.tree[os.getpid()][offset + 4 : offset + 4 + 24]
+            data = self.tree[self.zoomOffset[os.getpid()]][offset + 4 : offset + 4 + 24]
             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
             return {"rIsLeaf": rIsLeaf, "rReserved": rReserved, "rCount": rCount, "rStartChromIx": rStartChromIx, "rStartBase": rStartBase, "rEndChromIx": rEndChromIx, "rEndBase": rEndBase, "rdataOffset": rdataOffset, "nextOff": startOffset + offset + 24}
 
     # read 1 r tree head node
     async def readRtreeHeadNode(self, startOffset, offset):
         # data = self.get_bytes(offset, 4)
-        data = self.tree[os.getpid()][offset:offset + 4]
+        data = self.tree[self.zoomOffset[os.getpid()]][offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return await self.readRtreeNode(startOffset, offset, rIsLeaf)
 

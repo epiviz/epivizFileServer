@@ -1,48 +1,64 @@
 from multiprocessing import Process, Manager, Lock
 from parser import BaseFile, BigWig, BigBed
-
-class FileProcess(Process):
-    """docstring for FileObj"""
-    def __init__(self, fileName, fileType):
-        super(FileProcess, self).__init__()
-        if fileType == "BW":
-            self.file = BigWig(fileName)
-        elif fileType == "BB":
-            self.file = BigBed(fileName)
-        
-        if self.file == None:
-            raise Exception("fileType not supported yet :(")
-        
-    def run():
-        raise Exception("fileType not supported yet :(")
-
-
-class BieWigProcess(FileProcess):
-    """docstring for BieWigProcess"""
-    def __init__(self, fileName, fileType):
-        super(BieWigProcess, self).__init__(fileName, fileType)
-
-class BieBedProcess(FileProcess):
-    """docstring for BieBedProcess"""
-    def __init__(self, fileName, fileType):
-        super(BieBedProcess, self).__init__(fileName, fileType)
+from datetime import datetime, timedelta
+import pickle
+import os
 
 
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
-    def __init__(self):
+    def __init__(self, timePeriod):
         # self.manager = Manager()
         # self.dict = self.manager.dict()
-        self.record = {}
+        self.records = {}
+        self.timePeriod = timePeriod
         self.ManagerLock = Lock()
+        self.counter = 0
 
-    def printRecord(self):
-        return str(self.record)
+    def clean(self):
+        tasks = []
+        for fileName, record in self.records.items():
+            if datetime.now() - record.get("time") > timedelta(seconds = self.timePeriod) and not record.get("pickled"):
+                tasks.append(self.pickleFileObject(fileName))
+        return tasks
+
+    async def pickleFileObject(self, fileName):
+        record = self.records.get(fileName)
+        record["pickling"] = True
+        record["pickled"] = True
+        record["fileObj"].clearLock()
+        filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "wb")
+        print(record["fileObj"])
+        pickle.dump(record["fileObj"], filehandler)
+        filehandler.close()
+        record["pickling"] = False
+        record["fileObj"] = None
+
+    def printRecords(self):
+        return str(self.records)
 
     def setManager(self, fileName, fileObj):
         self.ManagerLock.acquire()
-        self.record[fileName] = fileObj
+        self.records[fileName] = {"fileObj":fileObj, "time": datetime.now(), "pickled": False, "pickling": False, "ID": self.counter}
+        self.counter += 1
         self.ManagerLock.release()
+
+    def updateTime(self, fileName):
+        record = self.records.get(fileName)
+        record["time"] = datetime.now()
+        while record["pickling"]:
+            pass
+        if record["pickled"]:
+            record["pickling"] = True
+            record["pickled"] = False
+            filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "rb")
+            record["fileObj"] = pickle.load(filehandler)
+            record["fileObj"].reinitLock()
+            record["pickling"] = False
+            filehandler.close()
+            os.remove(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache")
+
+        return record["fileObj"] #----- reactivate if pickled --- ----if none
 
     async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points):
         return await fileObj.getRange(chrom, startIndex, endIndex, points)
@@ -51,23 +67,23 @@ class FileHandlerProcess(object):
         return await fileObj.getRange(chrom, startIndex, endIndex)
 
     async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
-        if self.record.get(fileName) == None:
+        if self.records.get(fileName) == None:
             # p = Process(target=f, args=(d, l))
             # p = BieWigProcess(fileName, "BW")
             bigwig = BigWig(fileName)
             self.setManager(fileName, bigwig)
         else:
-            bigwig = self.record[fileName]
+            bigwig = self.updateTime(fileName)
         # p.start(chrom, startIndex, endIndex, points)
         return await self.bigwigWrapper(bigwig, chrom, startIndex, endIndex, points)
 
     async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
-        if self.record.get(fileName) == None:
+        if self.records.get(fileName) == None:
             # p = BieBedProcess(fileName, "BB")
             bigbed = BigBed(fileName)
             self.setManager(fileName, bigbed)
         else:
-            bigbed = self.record[fileName]
+            bigbed = self.updateTime(fileName)
         # r.start(chrom, startIndex, endIndex)
         return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex)
     
