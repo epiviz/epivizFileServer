@@ -58,7 +58,7 @@ class FileHandlerProcess(object):
             filehandler.close()
             os.remove(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache")
 
-        return record["fileObj"] #----- reactivate if pickled --- ----if none
+        return record["fileObj"]
 
     async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points):
         return await fileObj.getRange(chrom, startIndex, endIndex, points)
