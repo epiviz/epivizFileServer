@@ -6,7 +6,7 @@ app = Sanic()
 ph = None
 bp = Blueprint('my_blueprint')
 app.blueprint(bp)
-timePeriod = 2 # s
+timePeriod = 900 # s
 
 async def schedulePickle():
     while True:
