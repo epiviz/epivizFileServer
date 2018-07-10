@@ -44,12 +44,12 @@ class BigWig(BaseFile):
     async def getTree(self, zoomOffset):
         if zoomOffset == 0:
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
-                rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
+                rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", await self.get_bytes(self.header["fullIndexOffset"], 48))
             return await self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
         else:
             for x in range(0, self.header["zoomLevels"]):
                 if self.zooms[x][1] == zoomOffset:
-                    return await self.get_bytes(self.zooms[x][1], self.zooms[x][3]) if self.zooms[x][3] != -1 else self.get_bytes(self.zooms[x][1], self.zooms[0][1] - self.header["fullIndexOffset"])
+                    return await self.get_bytes(self.zooms[x][1], self.zooms[x][3]) if self.zooms[x][3] != -1 else await self.get_bytes(self.zooms[x][1], self.zooms[0][1] - self.header["fullIndexOffset"])
         
         raise Exception("get tree error: this should not have happened")
               
@@ -76,7 +76,7 @@ class BigWig(BaseFile):
         # in the case that points are greater than the range
 
         points = (end - start) if points > (end - start) else points
-        step = (end - start)*1.0/points
+        step = (end - start)*1.0/points if zoomlvl is -1 else 0
         zoomOffset = await self.getZoom(start, end, step, zoomlvl)
         if self.tree.get(zoomOffset) == None:
             self.tree[zoomOffset] = await self.getTree(zoomOffset)
@@ -113,9 +113,10 @@ class BigWig(BaseFile):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
-        return formatFunc({"start" : startArray, "end" : endArray, "values": value})
+        # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
+        return valueArray
 
-    async def getZoom(self, start, end, step, zoomlvl = -1):
+    async def getZoom(self, start, end, step, zoomlvl = -1, levelF = False):
         self.writeLockZoom.acquire()
         if not hasattr(self, 'zooms'):
             self.zooms = {}
@@ -143,10 +144,10 @@ class BigWig(BaseFile):
                 newDis = ((self.zooms[level][0] - step)*1.0) ** 2
                 if newDis < distance:
                         distance = newDis
-                        offset = self.zooms[level][1]
+                        offset = self.zooms[level][1] if not levelF else level
         # if it is not zero
         elif zoomlvl:
-            offset = self.zooms[zoomlvl - 1][1]
+            offset = self.zooms[zoomlvl - 1][1] if not levelF else zoomlvl
 
         return offset
 
