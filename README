@@ -1,1 +1,6 @@
 File parser for various genomic data formats
+
+* /parser - contains the parser library. 
+* /handler - contains the file handler, manages requests to the parser library, caches data, pickles file objects. 
+                Implements async processing of requests.
+* server.py - sanic HTTP/API server
