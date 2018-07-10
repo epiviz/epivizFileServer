@@ -39,7 +39,8 @@ class BigBed(BigWig):
 
         self.tree[os.getpid()] = None
         # self.tree = None
-        return formatFunc({"start" : startArray, "end" : endArray, "values": value})
+        # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
+        return valueArray
 
     # placeholder because of super function
     async def grepAnnoyingSections(self, dataOffset, dataSize, chrmId, startIndex, endIndex):
