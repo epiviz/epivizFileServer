@@ -22,8 +22,11 @@ class FileHandlerProcess(object):
         self.db = sqlite3.connect('data.db')
         self.c = self.db.cursor()
         self.c.execute('''DROP TABLE IF EXISTS cache''')
+        self.c.execute('''DROP TABLE IF EXISTS stocks''')
+
         self.c.execute('''CREATE TABLE cache
              (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text)''')
+        self.db.commit()
 
     def clean(self):
         tasks = []
@@ -73,30 +76,47 @@ class FileHandlerProcess(object):
 
     async def sqlQueryBW(self, startIndex, endIndex, chrom, zoomLvl, fileId):
         result = []
-        print(type(zoomLvl))
+        start = []
+        end = []
         for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=? AND zoomLvl=? AND startI>=? and endI<=?)', (fileId, zoomLvl, startIndex, endIndex)):
-            result.append(row[0], row[1], row[2])
+            result.append((row[0], row[1], row[2]))
+            # calculate missing range
+            if row[0] > startIndex:
+                start.append(startIndex)
+                end.append(row[0])
+                startIndex = row[1]
+        print(startIndex)
+        start.append(startIndex)
+        end.append(endIndex)
 
-        # --- missing range calculation ---
         return start, end, result
 
     async def addToDbBW(self, result, chrom, fileId, zoomLvl):
-        for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
-            self.c.execute("INSERT INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
-                (fileId, datetime.now(), zoomLvl, s, e, chrom, v, ""))
+        # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
+        print (result)
+        for r in result:
+            for s in r:
+                print(s[0])
+                self.c.execute("INSERT INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                    (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], ""))
+        self.db.commit()
 
     async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
+        result=[]
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
-        zoomlvl = await fileObj.getZoom(startIndex, endIndex, step, levelF = True)
-        (start, end, dbRusult) = await self.sqlQueryBW(startIndex, endIndex, chrom, zoomlvl, fileId)
-        print("going to get range")
+        zoomLvl, _ = await fileObj.getZoom(startIndex, endIndex, step)
+        (start, end, dbRusult) = await self.sqlQueryBW(startIndex, endIndex, chrom, zoomLvl, fileId)
+        print("using zoomlvl", zoomLvl)
         for s, e in zip(start, end):
-            result.append(await fileObj.getRange(chrom, s, e, zoomlvl = zoomlvl))
+            print("----")
+            result.append(await fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
         addToDb = self.addToDbBW(result, chrom, fileId, zoomLvl)
-        asyncio.ensure_future(stuff)
+        await addToDb
+        # asyncio.ensure_future(addToDb)
         #return await self.mergeBW(result, dbRusult)
-        return result, dbRusult
+        result.append(dbRusult)
+        return result
 
     async def bigbedWrapper(self, fileObj, chrom, startIndex, endIndex):
         return await fileObj.getRange(chrom, startIndex, endIndex)

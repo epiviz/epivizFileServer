@@ -69,6 +69,7 @@ class BigWig(BaseFile):
             self.compressed = False 
 
     async def getRange(self, chr, start, end, points=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+        print("------", start, end, chr)
         if not hasattr(self, 'header'):
             await self.getHeader()
         if start >= end:
@@ -77,7 +78,7 @@ class BigWig(BaseFile):
 
         points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points if zoomlvl is -1 else 0
-        zoomOffset = await self.getZoom(start, end, step, zoomlvl)
+        _, zoomOffset = await self.getZoom(start, end, step, zoomlvl)
         if self.tree.get(zoomOffset) == None:
             self.tree[zoomOffset] = await self.getTree(zoomOffset)
         
@@ -116,7 +117,7 @@ class BigWig(BaseFile):
         # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
         return valueArray
 
-    async def getZoom(self, start, end, step, zoomlvl = -1, levelF = False):
+    async def getZoom(self, start, end, step, zoomlvl = -1):
         self.writeLockZoom.acquire()
         if not hasattr(self, 'zooms'):
             self.zooms = {}
@@ -144,12 +145,14 @@ class BigWig(BaseFile):
                 newDis = ((self.zooms[level][0] - step)*1.0) ** 2
                 if newDis < distance:
                         distance = newDis
-                        offset = self.zooms[level][1] if not levelF else level
+                        offset = self.zooms[level][1]
+                        lvl = level
         # if it is not zero
         elif zoomlvl:
             offset = self.zooms[zoomlvl - 1][1] if not levelF else zoomlvl
+            lvl = zoomlvl
 
-        return offset
+        return zoomlvl, offset
 
     def fixRange(self, startOffset, chromId, start, end):
         start = self.fixStartRange(startOffset, 48, chromId, start, end)
@@ -331,7 +334,6 @@ class BigWig(BaseFile):
         result = []
         itemCount = len(decom)/32
         x = 0
-
         while x < itemCount and startIndex < endIndex:
             (zoomChromID, start, end, _, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[x*32 : (x+1)*32])
             x += 1
@@ -353,7 +355,6 @@ class BigWig(BaseFile):
                     # for inclusive endIndex return
                     # result.append((startIndex, end, value))
                     startIndex = end + 1
-            x += 1
 
         return (startIndex, result)
 
