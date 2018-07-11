@@ -1,2 +1,3 @@
 *.pyc
 parser/__pycache__/*
+*.DS_Store
