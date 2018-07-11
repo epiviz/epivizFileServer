@@ -22,10 +22,10 @@ class FileHandlerProcess(object):
         self.db = sqlite3.connect('data.db')
         self.c = self.db.cursor()
         self.c.execute('''DROP TABLE IF EXISTS cache''')
-        self.c.execute('''DROP TABLE IF EXISTS stocks''')
 
         self.c.execute('''CREATE TABLE cache
-             (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text)''')
+             (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text,
+             UNIQUE(fileId, zoomLvl, startI, endI))''')
         self.db.commit()
 
     def clean(self):
@@ -41,7 +41,6 @@ class FileHandlerProcess(object):
         record["pickled"] = True
         record["fileObj"].clearLock()
         filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "wb")
-        print(record["fileObj"])
         pickle.dump(record["fileObj"], filehandler)
         filehandler.close()
         record["pickling"] = False
@@ -82,10 +81,10 @@ class FileHandlerProcess(object):
             result.append((row[0], row[1], row[2]))
             # calculate missing range
             if row[0] > startIndex:
+                print(startIndex, (row[0], row[1], row[2]))
                 start.append(startIndex)
                 end.append(row[0])
-                startIndex = row[1]
-        print(startIndex)
+            startIndex = row[1]
         start.append(startIndex)
         end.append(endIndex)
 
@@ -93,11 +92,9 @@ class FileHandlerProcess(object):
 
     async def addToDbBW(self, result, chrom, fileId, zoomLvl):
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
-        print (result)
         for r in result:
             for s in r:
-                print(s[0])
-                self.c.execute("INSERT INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                self.c.execute("INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
                     (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], ""))
         self.db.commit()
 
@@ -105,11 +102,11 @@ class FileHandlerProcess(object):
         result=[]
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
-        zoomLvl, _ = await fileObj.getZoom(startIndex, endIndex, step)
+        zoomLvl, _ = await fileObj.getZoom(step)
+        print(zoomLvl)
         (start, end, dbRusult) = await self.sqlQueryBW(startIndex, endIndex, chrom, zoomLvl, fileId)
-        print("using zoomlvl", zoomLvl)
         for s, e in zip(start, end):
-            print("----")
+            print(s, e)
             result.append(await fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
         addToDb = self.addToDbBW(result, chrom, fileId, zoomLvl)
         await addToDb
