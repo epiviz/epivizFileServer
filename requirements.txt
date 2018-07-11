@@ -1,2 +1,4 @@
 zlib
 struct
+sanic
+sqlite3
