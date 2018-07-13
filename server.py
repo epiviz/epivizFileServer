@@ -6,7 +6,9 @@ app = Sanic()
 ph = None
 bp = Blueprint('my_blueprint')
 app.blueprint(bp)
+# the length of time that server schedules a file obj pickle
 fileTime = 900 # s
+# the length of time that server cleans unused records from db
 recordTime = 1500 # s
 
 async def schedulePickle():
