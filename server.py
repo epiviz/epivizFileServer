@@ -6,20 +6,27 @@ app = Sanic()
 ph = None
 bp = Blueprint('my_blueprint')
 app.blueprint(bp)
-timePeriod = 900 # s
+fileTime = 900 # s
+recordTime = 1500 # s
 
 async def schedulePickle():
     while True:
-        await asyncio.sleep(timePeriod)
-        cleanQue = ph.clean()
+        await asyncio.sleep(fileTime)
+        cleanQue = ph.cleanFileOBJ()
         for stuff in cleanQue:
             asyncio.ensure_future(stuff)
-        print('Server scheduled cleaning!')
+        print('Server scheduled file OBJ cleaning!')
+
+async def cleanDB():
+    while True:
+        await asyncio.sleep(recordTime)
+        asyncio.ensure_future(ph.cleanDbRecord())
+        print('Server scheduled DB cleaning!')
 
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
     global ph
-    ph = FileHandlerProcess(timePeriod)
+    ph = FileHandlerProcess(fileTime, recordTime)
     print("FileHandler created")
     print('Server successfully started!')
 
@@ -59,8 +66,8 @@ def printRecords(request):
 def printRequest(request):
     return response.text(str(request))
 
-schedule = schedulePickle()
-app.add_task(schedule)
+app.add_task(schedulePickle())
+app.add_task(cleanDB())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)

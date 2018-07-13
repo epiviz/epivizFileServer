@@ -17,17 +17,19 @@ class BigBed(BigWig):
         if not hasattr(self, 'header'):
             await self.getHeader()
 
-        if start >= end:
+        if start > end:
             raise Exception("InputError")
-
-        self.tree[os.getpid()] = await self.getTree()
+        elif start is end:
+            return []
+        if self.tree.get(-2) == None:    
+            self.tree = await self.getTree(-2)
         # self.tree = self.getTree()
 
         value = []
         startArray = []
         endArray = []
 
-        valueArray = await self.getValues(chr, start, end)
+        valueArray = await self.getValues(chr, start, end, -2)
 
         for item in valueArray:
             startArray.append(item[0])
@@ -37,7 +39,6 @@ class BigBed(BigWig):
         if respType is "JSON":
             formatFunc = self.formatAsJSON
 
-        self.tree[os.getpid()] = None
         # self.tree = None
         # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
         return valueArray
@@ -73,7 +74,7 @@ class BigBed(BigWig):
                 x += 2
         return startIndex, result
 
-    async def grepSections(self, dataOffset, dataSize, startIndex, endIndex):
+    async def grepSections(self, dataOffset, dataSize, startIndex, endIndex, zoomlvl):
         data = await self.get_bytes(dataOffset, dataSize)
         decom = zlib.decompress(data) if self.compressed else data
         result = []
