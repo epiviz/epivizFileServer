@@ -4,11 +4,11 @@
 
 import struct
 import zlib
-# import requests
-from requests_futures.sessions import FuturesSession
+import requests
+# from requests_futures.sessions import FuturesSession
 import ujson
 
-session = FuturesSession(max_workers=10)
+# session = FuturesSession(max_workers=10)
 
 class BaseFile(object):
     """
@@ -41,7 +41,7 @@ class BaseFile(object):
     def formatAsJSON(self, data):
         return ujson.dumps(data)
 
-    async def get_bytes(self, offset, size):
+    def get_bytes(self, offset, size):
         if self.local:
             f = open(self.file, "rb")
             f.seek(offset)
@@ -50,8 +50,8 @@ class BaseFile(object):
             return bin_value
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
-            # resp = requests.get(self.file, headers=headers)
-            resp = session.get(self.file, headers=headers).result()
+            resp = requests.get(self.file, headers=headers)
+            # resp = session.get(self.file, headers=headers).result()
             # use requests.codes.ok instead
             if resp.status_code != 206:
                 raise Exception("URLError")
