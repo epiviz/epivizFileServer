@@ -5,6 +5,8 @@ import pickle
 import os
 import sqlite3
 import asyncio
+import concurrent.futures
+import threading
 # ----- things to be done -------
 # remove cache and db cache at start
 # fix bug
@@ -12,7 +14,7 @@ import asyncio
 
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
-    def __init__(self, fileTime, recordTime):
+    def __init__(self, fileTime, recordTime, MAXWORKER):
         # self.manager = Manager()
         # self.dict = self.manager.dict()
         self.records = {}
@@ -20,6 +22,7 @@ class FileHandlerProcess(object):
         self.recordTime = recordTime
         self.ManagerLock = Lock()
         self.counter = 0
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
         self.db = sqlite3.connect('data.db')
         self.c = self.db.cursor()
         self.c.execute('''DROP TABLE IF EXISTS cache''')
@@ -106,15 +109,17 @@ class FileHandlerProcess(object):
         self.db.commit()
 
     async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
-        result=[]
+        print("thread id ", threading.get_ident())
+        f=[]
+        result = []
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
-        zoomLvl, _ = await fileObj.getZoom(step)
-        print(zoomLvl)
-        (start, end, dbRusult) = await self.sqlQueryBW(startIndex, endIndex, chrom, zoomLvl, fileId)
+        zoomLvl, _ = await self.executor.submit(fileObj.getZoom, step).result()
+        m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
+        (start, end, dbRusult) = await m.result()
         for s, e in zip(start, end):
             result.append(await fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
-        asyncio.ensure_future(self.addToDbBW(result, chrom, fileId, zoomLvl))
+        self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
         # asyncio.ensure_future(addToDb)
         #return await self.mergeBW(result, dbRusult)
         result.append(dbRusult)
@@ -172,7 +177,8 @@ class FileHandlerProcess(object):
         else:
             bigwig, fileId = self.updateTime(fileName)
         # p.start(chrom, startIndex, endIndex, points)
-        return await self.bigwigWrapper(bigwig, chrom, startIndex, endIndex, points, fileId)
+        f = self.executor.submit(self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId)
+        return await f.result()
 
     async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
         if self.records.get(fileName) == None:
