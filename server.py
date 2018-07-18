@@ -4,13 +4,11 @@ from handler import FileHandlerProcess
 import asyncio
 app = Sanic()
 ph = None
-bp = Blueprint('my_blueprint')
-app.blueprint(bp)
 # the length of time that server schedules a file obj pickle
 fileTime = 900 # s
 # the length of time that server cleans unused records from db
 recordTime = 1500 # s
-
+MAXWORKER = 10
 async def schedulePickle():
     while True:
         await asyncio.sleep(fileTime)
@@ -28,7 +26,7 @@ async def cleanDB():
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
     global ph
-    ph = FileHandlerProcess(fileTime, recordTime)
+    ph = FileHandlerProcess(fileTime, recordTime, MAXWORKER)
     print("FileHandler created")
     print('Server successfully started!')
 
