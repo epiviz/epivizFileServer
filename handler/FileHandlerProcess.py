@@ -23,7 +23,7 @@ class FileHandlerProcess(object):
         self.ManagerLock = Lock()
         self.counter = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
-        self.db = sqlite3.connect('data.db')
+        self.db = sqlite3.connect('data.db', check_same_thread=False)
         self.c = self.db.cursor()
         self.c.execute('''DROP TABLE IF EXISTS cache''')
 
@@ -81,10 +81,11 @@ class FileHandlerProcess(object):
 
         return record["fileObj"], record["ID"]
 
-    async def sqlQueryBW(self, startIndex, endIndex, chrom, zoomLvl, fileId):
+    def sqlQueryBW(self, startIndex, endIndex, chrom, zoomLvl, fileId):
         result = []
         start = []
         end = []
+        print("1")
         for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=? AND zoomLvl=? AND startI>=? AND endI<=? AND chrom=?)', 
             (fileId, zoomLvl, startIndex, endIndex, chrom)):
             result.append((row[0], row[1], row[2]))
@@ -98,7 +99,7 @@ class FileHandlerProcess(object):
 
         return start, end, result
 
-    async def addToDbBW(self, result, chrom, fileId, zoomLvl):
+    def addToDbBW(self, result, chrom, fileId, zoomLvl):
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
         for r in result:
             for s in r:
@@ -108,24 +109,26 @@ class FileHandlerProcess(object):
                     (datetime.now(), fileId, zoomLvl, s[0], s[1], chrom))
         self.db.commit()
 
-    async def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
+    def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
         print("thread id ", threading.get_ident())
         f=[]
         result = []
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
-        zoomLvl, _ = await self.executor.submit(fileObj.getZoom, step).result()
+        zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
         m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
-        (start, end, dbRusult) = await m.result()
+        print(m)
+        concurrent.futures.as_completed([m])
+        (start, end, dbRusult) = m.result()
         for s, e in zip(start, end):
-            result.append(await fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
+            result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
         self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
         # asyncio.ensure_future(addToDb)
         #return await self.mergeBW(result, dbRusult)
         result.append(dbRusult)
         return self.merge(result)
 
-    async def sqlQueryBB(self, startIndex, endIndex, chrom, fileId):
+    def sqlQueryBB(self, startIndex, endIndex, chrom, fileId):
         result = []
         start = []
         end = []
@@ -172,13 +175,13 @@ class FileHandlerProcess(object):
             # p = Process(target=f, args=(d, l))
             # p = BieWigProcess(fileName, "BW")
             bigwig = BigWig(fileName)
-            await bigwig.getHeader()
+            bigwig.getHeader()
             fileId = self.setManager(fileName, bigwig)
         else:
             bigwig, fileId = self.updateTime(fileName)
         # p.start(chrom, startIndex, endIndex, points)
         f = self.executor.submit(self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId)
-        return await f.result()
+        return f.result()
 
     async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
         if self.records.get(fileName) == None:
