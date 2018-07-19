@@ -99,7 +99,6 @@ class FileHandlerProcess(object):
         result = []
         start = []
         end = []
-        print("1")
         c = self.connection.cursor()
         c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
             (fileId, zoomLvl, startIndex, endIndex, chrom))
@@ -120,7 +119,6 @@ class FileHandlerProcess(object):
             startIndex = row[endI]
         start.append(startIndex)
         end.append(endIndex)
-
         return start, end, result
 
     def addToDbBW(self, result, chrom, fileId, zoomLvl):
@@ -141,11 +139,13 @@ class FileHandlerProcess(object):
         step = (endIndex - startIndex)*1.0/points
         zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
         m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
-        print(m)
         concurrent.futures.as_completed([m])
         (start, end, dbRusult) = m.result()
         for s, e in zip(start, end):
-            result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
+            f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomLvl))
+            # result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
+        for t in concurrent.futures.as_completed(f):
+            result.append(t.result())
         self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
         # asyncio.ensure_future(addToDb)
         #return await self.mergeBW(result, dbRusult)
@@ -204,8 +204,11 @@ class FileHandlerProcess(object):
         else:
             bigwig, fileId = self.updateTime(fileName)
         # p.start(chrom, startIndex, endIndex, points)
-        f = self.executor.submit(self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId)
-        return f.result()
+        loop = asyncio.get_event_loop()
+        m = await loop.run_in_executor(self.executor, self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId)
+        # f = self.executor.submit(self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId)
+        # m=await f.result()
+        return m
 
     async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
         if self.records.get(fileName) == None:
