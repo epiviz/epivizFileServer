@@ -1,9 +1,10 @@
 from multiprocessing import Process, Manager, Lock
 from parser import BaseFile, BigWig, BigBed
 from datetime import datetime, timedelta
+import pymysql.cursors
 import pickle
 import os
-import sqlite3
+# import sqlite3
 import asyncio
 import concurrent.futures
 import threading
@@ -23,14 +24,27 @@ class FileHandlerProcess(object):
         self.ManagerLock = Lock()
         self.counter = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
-        self.db = sqlite3.connect('data.db', check_same_thread=False)
-        self.c = self.db.cursor()
-        self.c.execute('''DROP TABLE IF EXISTS cache''')
+        # self.db = sqlite3.connect('data.db', check_same_thread=False)
+        self.connection = pymysql.connect(host='localhost',
+                    user='root',
+                    password='123123123',
+                    db='DB',
+                    charset='utf8mb4',
+                    cursorclass=pymysql.cursors.DictCursor,
+                    autocommit=True)      
+        self.connection.commit()  
+        # self.c = self.db.cursor()
+        c = self.connection.cursor()
+        c.execute('''DROP TABLE IF EXISTS cache''')
 
-        self.c.execute('''CREATE TABLE cache
-             (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text,
+        #self.c.execute('''CREATE TABLE cache
+        #     (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text,
+        #      UNIQUE(fileId, zoomLvl, startI, endI))''')
+        c.execute('''CREATE TABLE cache
+             (fileId int, lastTime timestamp, zoomLvl int, startI int, endI int, chrom varchar(255), valueBW varchar(255), valueBB varchar(255),
              UNIQUE(fileId, zoomLvl, startI, endI))''')
-        self.db.commit()
+        self.connection.commit()
+        c.close()
 
     def cleanFileOBJ(self):
         tasks = []
@@ -40,7 +54,7 @@ class FileHandlerProcess(object):
         return tasks
 
     async def cleanDbRecord(self):
-        self.c.execute('DELETE FROM cache WHERE lastTime < ?', (datetime.now() - timedelta(seconds = self.recordTime),))
+        self.c.execute('DELETE FROM cache WHERE lastTime < %s', (datetime.now() - timedelta(seconds = self.recordTime),))
         self.db.commit()
 
     async def pickleFileObject(self, fileName):
@@ -86,14 +100,24 @@ class FileHandlerProcess(object):
         start = []
         end = []
         print("1")
-        for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=? AND zoomLvl=? AND startI>=? AND endI<=? AND chrom=?)', 
-            (fileId, zoomLvl, startIndex, endIndex, chrom)):
-            result.append((row[0], row[1], row[2]))
+        c = self.connection.cursor()
+        c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
+            (fileId, zoomLvl, startIndex, endIndex, chrom))
+        # for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
+        #     (fileId, zoomLvl, startIndex, endIndex, chrom)):
+            # result.append((row[0], row[1], row[2]))
+            # # calculate missing range
+            # if row[0] > startIndex:
+            #     start.append(startIndex)
+            #     end.append(row[0])
+            # startIndex = row[1]
+        for row in c.fetchall():
+            result.append((row[startI], row[endI], row[valueBW]))
             # calculate missing range
-            if row[0] > startIndex:
+            if row[startI] > startIndex:
                 start.append(startIndex)
-                end.append(row[0])
-            startIndex = row[1]
+                end.append(row[startI])
+            startIndex = row[endI]
         start.append(startIndex)
         end.append(endIndex)
 
@@ -103,9 +127,9 @@ class FileHandlerProcess(object):
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
         for r in result:
             for s in r:
-                self.c.execute("INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                self.c.execute("INSERT OR IGNORE INTO cache VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
                     (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], ""))
-                self.c.execute("UPDATE cache SET lastTime = ? WHERE (fileId=? AND zoomLvl=? AND startI=? AND endI=? AND chrom=?)",
+                self.c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND zoomLvl=%s AND startI=%s AND endI=%s AND chrom=%s)",
                     (datetime.now(), fileId, zoomLvl, s[0], s[1], chrom))
         self.db.commit()
 
@@ -132,7 +156,7 @@ class FileHandlerProcess(object):
         result = []
         start = []
         end = []
-        for row in self.c.execute('SELECT startI, endI, valueBB FROM cache WHERE (fileId=? AND startI>=? AND endI<=? AND chrom=?)', 
+        for row in self.c.execute('SELECT startI, endI, valueBB FROM cache WHERE (fileId=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
             (fileId, startIndex, endIndex, chrom)):
             result.append((row[0], row[1], row[2]))
             # calculate missing range
@@ -149,9 +173,9 @@ class FileHandlerProcess(object):
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
         for r in result:
             for s in r:
-                self.c.execute("INSERT OR IGNORE INTO cache VALUES (?, ?, ?, ?, ?, ?, ?, ?)", 
+                self.c.execute("INSERT OR IGNORE INTO cache VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
                     (fileId, datetime.now(), -2, s[0], s[1], chrom, 0.0, s[2]))
-                self.c.execute("UPDATE cache SET lastTime = ? WHERE (fileId=? AND startI=? AND endI=? AND chrom=?)",
+                self.c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND startI=%s AND endI=%s AND chrom=%s)",
                     (datetime.now(), fileId, s[0], s[1], chrom))
         self.db.commit()
 
