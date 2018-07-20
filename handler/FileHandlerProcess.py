@@ -29,7 +29,7 @@ class FileHandlerProcess(object):
         # self.db = sqlite3.connect('data.db', check_same_thread=False)
         self.connection = pymysql.connect(host='localhost',
                     user='root',
-                    password='123123123',
+                    password='sarada',
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
@@ -140,19 +140,19 @@ class FileHandlerProcess(object):
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
         f.append(self.executor.submit(fileObj.getRange, chrom, startIndex, endIndex))
-        # zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
-        # m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
-        # concurrent.futures.as_completed([m])
-        # (start, end, dbRusult) = m.result()
-        # for s, e in zip(start, end):
-            # f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomLvl))
-            # result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
+        zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
+        m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
+        concurrent.futures.as_completed([m])
+        (start, end, dbRusult) = m.result()
+        for s, e in zip(start, end):
+            f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomLvl))
+            result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
         for t in concurrent.futures.as_completed(f):
             result.append(t.result())
-        # self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
+        self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
         # asyncio.ensure_future(addToDb)
-        #return await self.mergeBW(result, dbRusult)
-        # result.append(dbRusult)
+        # return await self.mergeBW(result, dbRusult)
+        result.append(dbRusult)
         return self.merge(result)
 
     def sqlQueryBB(self, startIndex, endIndex, chrom, fileId):
