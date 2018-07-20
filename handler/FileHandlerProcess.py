@@ -37,8 +37,8 @@ class FileHandlerProcess(object):
 
         # self.db = sqlite3.connect('data.db', check_same_thread=False)
         self.mainConnection = pymysql.connect(host='localhost',
-                    user='root',
-                    password='sarada',
+                    user=dbUsername,
+                    password=dbPassword,
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
@@ -74,8 +74,8 @@ class FileHandlerProcess(object):
 
     def threadInit(self):
         self.dbConnection[threading.get_ident()] = pymysql.connect(host='localhost',
-                    user='root',
-                    password='123123123',
+                    user=dbUsername,
+                    password=dbPassword,
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
