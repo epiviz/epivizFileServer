@@ -75,17 +75,17 @@ class BigWig(BaseFile):
         elif start is end:
             return []
         # in the case that points are greater than the range
-
         points = (end - start) if points > (end - start) else points
         step = (end - start)*1.0/points if zoomlvl is -1 else 0
         zoomlvl, zoomOffset = self.getZoom(step, zoomlvl)
         if self.tree.get(zoomlvl) == None:
             self.tree[zoomlvl] = self.getTree(zoomlvl)
-
         value = []
         startArray = []
         endArray = []
+        print(start, end)
         valueArray = self.getValues(chr, start, end, zoomlvl)
+        print("done")
         # if metric is "AVG":
         #     metricFunc = self.averageOfArray
         for item in valueArray:
@@ -94,7 +94,6 @@ class BigWig(BaseFile):
             value.append(item[2])
         if respType is "JSON":
             formatFunc = self.formatAsJSON
-
         # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
         return valueArray
 
