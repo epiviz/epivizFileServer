@@ -8,6 +8,8 @@ import os
 import asyncio
 import concurrent.futures
 import threading
+import handler.utils as utils
+
 # ----- things to be done -------
 # remove cache and db cache at start
 # fix bug
@@ -166,19 +168,20 @@ class FileHandlerProcess(object):
         result = []
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
         step = (endIndex - startIndex)*1.0/points
-        zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
-        m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
-        concurrent.futures.as_completed([m])
-        (start, end, dbRusult) = m.result()
-        for s, e in zip(start, end):
-            f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomLvl))
+        f.append(self.executor.submit(fileObj.getRange, chrom, startIndex, endIndex))
+        # zoomLvl, _ = self.executor.submit(fileObj.getZoom, step).result()
+        # m = self.executor.submit(self.sqlQueryBW, startIndex, endIndex, chrom, zoomLvl, fileId)
+        # concurrent.futures.as_completed([m])
+        # (start, end, dbRusult) = m.result()
+        # for s, e in zip(start, end):
+            # f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomLvl))
             # result.append(fileObj.getRange(chrom, s, e, zoomlvl = zoomLvl))
         for t in concurrent.futures.as_completed(f):
             result.append(t.result())
-        self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
+        # self.executor.submit(self.addToDbBW, result, chrom, fileId, zoomLvl)
         # asyncio.ensure_future(addToDb)
         #return await self.mergeBW(result, dbRusult)
-        result.append(dbRusult)
+        # result.append(dbRusult)
         return self.merge(result)
 
     def sqlQueryBB(self, startIndex, endIndex, chrom, fileId):
@@ -249,4 +252,25 @@ class FileHandlerProcess(object):
             bigbed, fileId = self.updateTime(fileName)
         # r.start(chrom, startIndex, endIndex)
         return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex, fileId)
-    
+
+
+    async def handleFile(self, fileName, fileType, chrom, startIndex, endIndex,points):
+        if self.records.get(fileName) == None:
+            fileObj = utils.create_parser_object(fileType, 
+                                                fileName)
+            fileObj.getHeader()
+            fileId = self.setManager(fileName, fileObj)
+        else:
+            fileObj, fileId = self.updateTime(fileName)
+        
+        loop = asyncio.get_event_loop()
+        wrapper = None
+
+        if fileType in ["bigwig", "bigWig", "BigWig", "bw"]:
+            wrapper = self.bigwigWrapper
+        elif fileType in ["bigbed", "bb", "BigBed", "bigBed"]:
+            wrapper = self.bigbedWrapper
+
+        m = await loop.run_in_executor(self.executor, wrapper, fileObj, 
+                                    chrom, startIndex, endIndex, points, fileId)
+        return m
