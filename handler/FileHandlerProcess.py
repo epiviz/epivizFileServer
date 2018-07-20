@@ -128,9 +128,7 @@ class FileHandlerProcess(object):
         result = []
         start = []
         end = []
-        print(self.dbConnection)
         c = self.getConnection(threading.get_ident()).cursor()
-        print(c)
         # for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
         #     (fileId, zoomLvl, startIndex, endIndex, chrom)):
             # result.append((row[0], row[1], row[2]))
@@ -166,7 +164,6 @@ class FileHandlerProcess(object):
         c.close()
 
     def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
-        print("thread id ", threading.get_ident())
         f=[]
         result = []
         points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
