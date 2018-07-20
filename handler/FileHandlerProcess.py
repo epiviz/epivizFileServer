@@ -36,7 +36,7 @@ class FileHandlerProcess(object):
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
 
         # self.db = sqlite3.connect('data.db', check_same_thread=False)
-        self.connection = pymysql.connect(host='localhost',
+        self.mainConnection = pymysql.connect(host='localhost',
                     user='root',
                     password='sarada',
                     db='DB',
@@ -74,8 +74,8 @@ class FileHandlerProcess(object):
 
     def threadInit(self):
         self.dbConnection[threading.get_ident()] = pymysql.connect(host='localhost',
-                    user=dbUsername,
-                    password=dbPassword,
+                    user='root',
+                    password='123123123',
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
@@ -128,7 +128,9 @@ class FileHandlerProcess(object):
         result = []
         start = []
         end = []
+        print(self.dbConnection)
         c = self.getConnection(threading.get_ident()).cursor()
+        print(c)
         # for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
         #     (fileId, zoomLvl, startIndex, endIndex, chrom)):
             # result.append((row[0], row[1], row[2]))

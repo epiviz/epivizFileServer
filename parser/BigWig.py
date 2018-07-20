@@ -83,7 +83,9 @@ class BigWig(BaseFile):
         value = []
         startArray = []
         endArray = []
+        print(start, end)
         valueArray = self.getValues(chr, start, end, zoomlvl)
+        print("done")
         # if metric is "AVG":
         #     metricFunc = self.averageOfArray
         for item in valueArray:
