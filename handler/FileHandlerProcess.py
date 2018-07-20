@@ -25,18 +25,23 @@ class FileHandlerProcess(object):
         self.recordTime = recordTime
         self.ManagerLock = Lock()
         self.counter = 0
+        self.dbConnection = {}
+
+        # if in the future we switch to python 3.7
+        # self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER, initializer = self.threadInit, initargs=())
+
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
+
         # self.db = sqlite3.connect('data.db', check_same_thread=False)
-        self.connection = pymysql.connect(host='localhost',
+        self.mainConnection = pymysql.connect(host='localhost',
                     user='root',
                     password='sarada',
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
-                    autocommit=True)      
-        self.connection.commit()  
+                    autocommit=True)   
         # self.c = self.db.cursor()
-        c = self.connection.cursor()
+        c = self.mainConnection.cursor()
         c.execute('''DROP TABLE IF EXISTS cache''')
 
         #self.c.execute('''CREATE TABLE cache
@@ -45,7 +50,10 @@ class FileHandlerProcess(object):
         c.execute('''CREATE TABLE cache
              (fileId int, lastTime timestamp, zoomLvl int, startI int, endI int, chrom varchar(255), valueBW varchar(255), valueBB varchar(255),
              UNIQUE(fileId, zoomLvl, startI, endI))''')
-        self.connection.commit()
+        # c.execute('''ALTER TABLE  cache 
+        #             ADD UNIQUE indexname
+        #             (fileId, zoomLvl, startI, endI);''')
+        self.mainConnection.commit()
         c.close()
 
     def cleanFileOBJ(self):
@@ -56,8 +64,24 @@ class FileHandlerProcess(object):
         return tasks
 
     async def cleanDbRecord(self):
-        self.c.execute('DELETE FROM cache WHERE lastTime < %s', (datetime.now() - timedelta(seconds = self.recordTime),))
-        self.db.commit()
+        c = self.mainConnection.cursor()
+        c.execute('DELETE FROM cache WHERE lastTime < %s', (datetime.now() - timedelta(seconds = self.recordTime),))
+        self.mainConnection.commit()
+        c.close()
+
+    def threadInit(self):
+        self.dbConnection[threading.get_ident()] = pymysql.connect(host='localhost',
+                    user='root',
+                    password='123123123',
+                    db='DB',
+                    charset='utf8mb4',
+                    cursorclass=pymysql.cursors.DictCursor,
+                    autocommit=True)
+
+    def getConnection(self, threadId):
+        if not self.dbConnection.get(threadId):
+            self.threadInit()
+        return self.dbConnection[threadId]
 
     async def pickleFileObject(self, fileName):
         record = self.records.get(fileName)
@@ -101,9 +125,9 @@ class FileHandlerProcess(object):
         result = []
         start = []
         end = []
-        c = self.connection.cursor()
-        c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
-            (fileId, zoomLvl, startIndex, endIndex, chrom))
+        print(self.dbConnection)
+        c = self.getConnection(threading.get_ident()).cursor()
+        print(c)
         # for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
         #     (fileId, zoomLvl, startIndex, endIndex, chrom)):
             # result.append((row[0], row[1], row[2]))
@@ -112,26 +136,31 @@ class FileHandlerProcess(object):
             #     start.append(startIndex)
             #     end.append(row[0])
             # startIndex = row[1]
+        c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomLvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
+            (fileId, zoomLvl, startIndex, endIndex, chrom))
         for row in c.fetchall():
-            result.append((row[startI], row[endI], row[valueBW]))
+            result.append((row["startI"], row["endI"], row["valueBW"]))
             # calculate missing range
-            if row[startI] > startIndex:
+            if row["startI"] > startIndex:
                 start.append(startIndex)
-                end.append(row[startI])
-            startIndex = row[endI]
+                end.append(row["startI"])
+            startIndex = row["endI"]
         start.append(startIndex)
         end.append(endIndex)
+        c.close()
         return start, end, result
 
     def addToDbBW(self, result, chrom, fileId, zoomLvl):
+        c = self.getConnection(threading.get_ident()).cursor()
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
         for r in result:
             for s in r:
-                self.c.execute("INSERT OR IGNORE INTO cache VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", 
-                    (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], ""))
-                self.c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND zoomLvl=%s AND startI=%s AND endI=%s AND chrom=%s)",
-                    (datetime.now(), fileId, zoomLvl, s[0], s[1], chrom))
-        self.db.commit()
+                c.execute("INSERT INTO cache VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE lastTime = %s", 
+                    (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], "", datetime.now()))
+                # c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND zoomLvl=%s AND startI=%s AND endI=%s AND chrom=%s)",
+                #     (datetime.now(), fileId, zoomLvl, s[0], s[1], chrom))
+        self.connection.commit()
+        c.close()
 
     def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId):
         print("thread id ", threading.get_ident())
