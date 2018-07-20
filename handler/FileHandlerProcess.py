@@ -14,6 +14,9 @@ import handler.utils as utils
 # remove cache and db cache at start
 # fix bug
 # add support for non-consequtive range after sql search
+dbUsername = 'root'
+dbPassword = '123123123'
+
 
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
@@ -34,8 +37,8 @@ class FileHandlerProcess(object):
 
         # self.db = sqlite3.connect('data.db', check_same_thread=False)
         self.mainConnection = pymysql.connect(host='localhost',
-                    user='root',
-                    password='sarada',
+                    user=dbUsername,
+                    password=dbPassword,
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
@@ -71,8 +74,8 @@ class FileHandlerProcess(object):
 
     def threadInit(self):
         self.dbConnection[threading.get_ident()] = pymysql.connect(host='localhost',
-                    user='root',
-                    password='123123123',
+                    user=dbUsername,
+                    password=dbPassword,
                     db='DB',
                     charset='utf8mb4',
                     cursorclass=pymysql.cursors.DictCursor,
