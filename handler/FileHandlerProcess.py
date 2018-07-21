@@ -151,6 +151,8 @@ class FileHandlerProcess(object):
         c.close()
         return start, end, result
 
+    
+
     def addToDbBW(self, result, chrom, fileId, zoomLvl):
         c = self.getConnection(threading.get_ident()).cursor()
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):

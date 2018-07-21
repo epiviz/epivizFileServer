@@ -67,6 +67,7 @@ class BigWig(BaseFile):
             self.compressed = False 
 
     def getRange(self, chr, start, end, points=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+        print(start, end)
         if not hasattr(self, 'header'):
             self.getHeader()
         if start > end:
@@ -90,6 +91,7 @@ class BigWig(BaseFile):
             startArray.append(item[0])
             endArray.append(item[1])
             value.append(item[2])
+            start = item[1]
         if respType is "JSON":
             formatFunc = self.formatAsJSON
         # return formatFunc({"start" : startArray, "end" : endArray, "values": value})
