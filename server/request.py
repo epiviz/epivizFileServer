@@ -72,7 +72,7 @@ class SeqInfoRequest(EpivizRequest):
     def validate_params(self, request):
         return None
 
-    def get_data(self, ph):
+    async def get_data(self, ph):
 
         genome = self.seqs
         error = None
@@ -91,7 +91,7 @@ class MeasurementRequest(EpivizRequest):
     def validate_params(self, request):
         return None
 
-    def get_data(self, ph):
+    async def get_data(self, ph):
 
         result = {
             "annotation": [],
@@ -121,10 +121,10 @@ class MeasurementRequest(EpivizRequest):
                 result.get("minValue").append(0)
                 result.get("name").append(m.get("name"))
 
+                result_type = "feature"
                 if m.get("datatype") == "annotation":
-                    result.get("name").append("range")
-                else:
-                    result.get("name").append("feature")
+                    result_type = "range"
+                result.get("type").append(result_type)
 
                 result.get("metadata").append(None)
 
@@ -172,7 +172,7 @@ class DataRequest(EpivizRequest):
 
     async def get_data(self, ph):
 
-        all_measurements, error = MeasurementRequest({}).get_data(ph)
+        all_measurements, error = await MeasurementRequest({}).get_data(ph)
         file_index = None
 
         for i, m in enumerate(all_measurements.get("id")):
@@ -182,38 +182,35 @@ class DataRequest(EpivizRequest):
         # fileObj = utils.create_parser_object(file_measurement.get("file_type"), 
         #                                         file_measurement.get("url"))
 
-        fileName = all_measurements.get("datasourceGroup")[i]
-        fileType = all_measurements.get("datasourceId")[i]
-        chrom = self.params.get('chr')
-        startIndex = int(self.params.get('start'))
-        endIndex = int(self.params.get('end'))
-        points = int(self.params.get('points')) if self.params.get('points') != None else 2000
-        result = await ph.handleFile(fileName, fileType, chrom, startIndex, endIndex, points)
-        
-        return result, None
+        try:
+            fileName = all_measurements.get("datasourceGroup")[i]
+            fileType = all_measurements.get("datasourceId")[i]
+            measurement = self.params.get("measurement")
+            chrom = self.params.get('seqName')
+            startIndex = int(self.params.get('start'))
+            endIndex = int(self.params.get('end'))
+            points = int(self.params.get('points')) if self.params.get('points') != None else 2000
+            result = await ph.handleFile(fileName, fileType, chrom, startIndex, endIndex, points)
 
-        # try:
-        #     result = utils.execute_query(query, query_params)
-
-        #     if self.request.get("action") == "getRows":
-        #         data = utils.format_result(result, self.params)
-        #         if len(result) == 0:
-        #             return data["rows"], ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-        #         else:
-        #             return data["rows"], None
-        #     elif self.request.get("action") == "getValues":
-        #         if self.params.get("seqName") is not None:
-        #             result = utils.bin_rows(result)
-        #         data = utils.format_result(result, self.params)
-        #         if len(result) == 0:
-        #             return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-        #         else:
-        #             return data, None
-        #     else:
-        #         data = utils.format_result(result, self.params, False)
-        #         if len(result) == 0:
-        #             return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-        #         else:
-        #             return data, None
-        # except Exception as e:
-        #     return {}, str(e)
+            if self.request.get("action") == "getRows":
+                data = await utils.format_result(result, self.params)
+                if len(result) == 0:
+                    return data["rows"], ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
+                else:
+                    return data["rows"], None
+            elif self.request.get("action") == "getValues":
+                # if self.params.get("seqName") is not None:
+                #     result = utils.bin_rows(result)
+                data = await utils.format_result(result, self.params)
+                if len(result) == 0:
+                    return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
+                else:
+                    return data, None
+            else:
+                data = await utils.format_result(result, self.params, False)
+                if len(result) == 0:
+                    return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
+                else:
+                    return data, None
+        except Exception as e:
+            return {}, str(e)
