@@ -2,11 +2,15 @@ from sanic import Sanic, Blueprint, response
 from sanic.response import json
 from handler import FileHandlerProcess
 import asyncio
-from ujson import dumps
+import ujson
 from server.request import create_request
 # from aiocache import caches, cached
+from sanic_cors import CORS, cross_origin
+import sys
+
 
 app = Sanic()
+CORS(app)
 ph = None
 fileTime = 900 # s
 recordTime = 1500 # s
@@ -27,12 +31,6 @@ async def process_request(request):
         Returns:
             JSON result
     """
-
-    if request.method == "OPTIONS":
-        res = dumps({})
-        res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Headers'] = '*'
-        return res
 
     param_action = request.args.get("action")
     param_id = request.args.get("requestId")

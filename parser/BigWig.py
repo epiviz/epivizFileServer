@@ -220,6 +220,7 @@ class BigWig(BaseFile):
         return chromArray
 
     def getId(self, chrmzone):
+        print(chrmzone)
         self.writeLockChrm.acquire()
         if not hasattr(self, 'chrmIds'):
             self.chrmIds = {}
