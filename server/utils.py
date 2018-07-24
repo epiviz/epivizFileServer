@@ -37,9 +37,9 @@ async def format_result(input_data, params, offset=True):
 
     input = pandas.read_json(ujson.dumps(input_json), orient="records")
     input = input.drop_duplicates()
-    input.start.astype("int32")
-    input.end.astype("int32")
-    input[measurement].astype("float")
+    input.start = input.start.astype("float")
+    input.end = input.end.astype("float")
+    input[measurement] = input[measurement].astype("float")
 
     # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
     globalStartIndex = None
