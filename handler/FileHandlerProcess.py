@@ -51,7 +51,7 @@ class FileHandlerProcess(object):
         #     (fileId integer, lastTime timestamp, zoomLvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text,
         #      UNIQUE(fileId, zoomLvl, startI, endI))''')
         c.execute('''CREATE TABLE cache
-             (fileId int, lastTime timestamp, zoomLvl int, startI int, endI int, chrom varchar(255), valueBW varchar(255), valueBB varchar(255),
+             (fileId int, lastTime timestamp, zoomLvl int, startI bigint, endI bigint, chrom varchar(255), valueBW double, valueBB double,
              UNIQUE(fileId, zoomLvl, startI, endI))''')
         # c.execute('''ALTER TABLE  cache 
         #             ADD UNIQUE indexname
@@ -153,15 +153,13 @@ class FileHandlerProcess(object):
         c.close()
         return start, end, result
 
-    
-
     def addToDbBW(self, result, chrom, fileId, zoomLvl):
         c = self.getConnection(threading.get_ident()).cursor()
         # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
         for r in result:
             for s in r:
-                c.execute("INSERT INTO cache VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON DUPLICATE KEY UPDATE lastTime = %s", 
-                    (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], "", datetime.now()))
+                c.execute("INSERT INTO cache VALUES (%s, %s, %s, %s, %s, %s, %f, %f) ON DUPLICATE KEY UPDATE lastTime = %s", 
+                    (fileId, datetime.now(), zoomLvl, s[0], s[1], chrom, s[2], 0, datetime.now()))
                 # c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND zoomLvl=%s AND startI=%s AND endI=%s AND chrom=%s)",
                 #     (datetime.now(), fileId, zoomLvl, s[0], s[1], chrom))
         self.connection.commit()

@@ -42,6 +42,7 @@ async def format_result(input_data, params, offset=True):
     input[measurement] = input[measurement].astype("float")
     input["chr"] = params.get("seqName")
 
+    input = bin_rows(input)
     # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
     globalStartIndex = None
 
@@ -116,3 +117,43 @@ async def format_result(input_data, params, offset=True):
         data["rows"]["values"]["strand"] = None
 
     return data
+
+def bin_rows(input, max_rows=2000):
+    """
+        Helper function to scale rows to resolution
+
+        Args:
+            input: dataframe to bin
+            max_rows: resolution to scale rows
+
+        Return:
+            data frame with scaled rows
+    """
+
+    input_length = len(input)
+
+    if input_length < max_rows:
+        return input
+
+    step = max_rows
+    col_names = input.columns.values.tolist()
+
+    input["rowGroup"] = range(0, input_length)
+    input["rowGroup"] = pandas.cut(input["rowGroup"], bins=max_rows)
+    input_groups = input.groupby("rowGroup")
+
+    agg_dict = {}
+
+    for col in col_names:
+        if col in ["chr", "probe", "gene", "region"]:
+            agg_dict[col] = 'first'
+        elif col in ["start", "id"]:
+            agg_dict[col] = 'min'
+        elif col == "end":
+            agg_dict[col] = 'max'
+        else:
+            agg_dict[col] = 'mean'
+
+    bin_input = input_groups.agg(agg_dict)
+
+    return bin_input
