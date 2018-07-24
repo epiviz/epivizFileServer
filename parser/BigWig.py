@@ -67,11 +67,9 @@ class BigWig(BaseFile):
             self.compressed = False 
 
     def getRange(self, chr, start, end, points=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
-        print(start, end)
         if not hasattr(self, 'header'):
             self.getHeader()
         if start > end:
-            print(start, end)
             raise Exception("InputError")
         elif start is end:
             return []
@@ -222,7 +220,6 @@ class BigWig(BaseFile):
         return chromArray
 
     def getId(self, chrmzone):
-        print(chrmzone)
         self.writeLockChrm.acquire()
         if not hasattr(self, 'chrmIds'):
             self.chrmIds = {}
