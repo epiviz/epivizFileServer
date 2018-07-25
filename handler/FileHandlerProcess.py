@@ -121,7 +121,8 @@ class FileHandlerProcess(object):
 
         return record["fileObj"], record["ID"]
 
-    def sqlQuery(self, startIndex, endIndex, chrom, zoomlvl, fileId, col):
+    # the start and end indices will be arrays of non consequtive ranges
+    def sqlQuery(self, startIndices, endIndices, chrom, zoomlvl, fileId, col):
         result = []
         start = []
         end = []
@@ -135,17 +136,18 @@ class FileHandlerProcess(object):
             #     start.append(startIndex)
             #     end.append(row[0])
             # startIndex = row[1]
-        c.execute('SELECT startI, endI, %s FROM cache WHERE (fileId=%s AND zoomlvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
-            (col, fileId, zoomlvl, startIndex, endIndex, chrom))
-        for row in c.fetchall():
-            result.append((row["startI"], row["endI"], row[col]))
-            # calculate missing range
-            if row["startI"] > startIndex:
-                start.append(startIndex)
-                end.append(row["startI"])
-            startIndex = row["endI"]
-        start.append(startIndex)
-        end.append(endIndex)
+        for startIndex, endIndex in zip(startIndices, endIndices):
+            c.execute('SELECT startI, endI, %s FROM cache WHERE (fileId=%s AND zoomlvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
+                (col, fileId, zoomlvl, startIndex, endIndex, chrom))
+            for row in c.fetchall():
+                result.append((row["startI"], row["endI"], row[col]))
+                # calculate missing range
+                if row["startI"] > startIndex:
+                    start.append(startIndex)
+                    end.append(row["startI"])
+                startIndex = row["endI"]
+            start.append(startIndex)
+            end.append(endIndex)
         c.close()
         return start, end, result
 
@@ -167,10 +169,10 @@ class FileHandlerProcess(object):
         self.connection.commit()
         c.close()
 
-    def bigwigWrapper(self, fileObj, chrom, startIndex, endIndex, points, fileId, zoomlvl):
+    def bigwigWrapper(self, fileObj, chrom, startIndices, endIndices, points, fileId, zoomlvl):
         f=[]
         result = []
-        (start, end, dbRusult) = self.sqlQuery(startIndex, endIndex, chrom, zoomlvl, fileId, "valueBW")
+        (start, end, dbRusult) = self.sqlQuery(startIndices, endIndices, chrom, zoomlvl, fileId, "valueBW")
         for s, e in zip(start, end):
             f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomlvl))
         for t in concurrent.futures.as_completed(f):
@@ -181,10 +183,10 @@ class FileHandlerProcess(object):
         result.append(dbRusult)
         return self.merge(result)
 
-    async def bigbedWrapper(self, fileObj, chrom, startIndex, endIndex, fileId, zoomlvl = -2):
+    async def bigbedWrapper(self, fileObj, chrom, startIndices, endIndices, fileId, zoomlvl = -2):
         f=[]
         result = []
-        (start, end, dbRusult) = self.sqlQuery(startIndex, endIndex, chrom, zoomlvl, fileId, "valueBB")
+        (start, end, dbRusult) = self.sqlQuery(startIndices, endIndices, chrom, zoomlvl, fileId, "valueBB")
         for s, e in zip(start, end):
             f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomlvl))
         for t in concurrent.futures.as_completed(f):
@@ -205,16 +207,59 @@ class FileHandlerProcess(object):
     # and a future array containing overlapped results.
     def locateRedundent(self, fileId, startIndex, endIndex, zoomlvl):
         futures = []
-        with self.inProgress.get(fileId) as f:
-            if f is not None:
-                with f.get(zoomlvl) as z:
-                    if z is not None:
-                        pass
+        startIndices = []
+        endIndices = []
 
-        return startIndex, endIndex, futures
+        if self.inProgress.get(fileId) is not None:
+            if self.inProgress.get(fileId).get(zoomlvl) is not None:
+                for (start, end, future) in self.inProgress.get(fileId).get(zoomlvl):
+                    # calculate missing range
+                    if start > endIndex:
+                        break
+                    elif start >= startIndex and end < endIndex:
+                        futures.append((start, end, future))
+                        startIndices.append(startIndex)
+                        endIndices.append(start)
+                        startIndex = end
+                    elif start >= startIndex and end >= endIndex: 
+                        futures.append((start, endIndex, future))   
+                        startIndices.append(startIndex)
+                        endIndices.append(start)
+                        startIndex = endIndex
+                    elif start < startIndex and end < endIndex:
+                        futures.append((startIndex, end, future))
+                        startIndex = end
+                    elif start < startIndex and end >= endIndex:
+                        futures.append((startIndex, endIndex, future))
+                        startIndex = endIndex
 
-    def updateInprogress(self, m, fileId, zoomlvl, start, end):
-        pass
+        startIndices.append(startIndex)
+        endIndices.append(endIndex)
+
+        return startIndices, endIndices, futures
+
+    def updateInprogress(self, m, fileId, zoomlvl, startIndices, endIndices):
+        if self.inProgress.get(fileId) is None:
+            self.inProgress[fileId] = {}
+        if self.inProgress.get(fileId).get(zoomlvl) is None:
+            self.inProgress.get(fileId)[zoomlvl] = []
+        for start, end in zip(startIndices, endIndices):
+            self.inProgress.get(fileId)[zoomlvl].append((start, end, m))
+        g = lambda i: i[0]
+        self.inProgress.get(fileId)[zoomlvl].sort(key=g)
+        # result = await m.result()
+        # self.inProgress.get(fileId)[zoomlvl].remove((start, end, m))
+
+    def removeInprogress(self, m, fileId, zoomlvl, startIndices, endIndices):
+        for start, end in zip(startIndices, endIndices):
+            self.inProgress.get(fileId)[zoomlvl].remove((start, end, m))
+
+    async def calculateResult(self, startIndex, endIndex, future):
+        result = []
+        for (start, end, value) in await future:
+            if start >= startIndex and end <= endIndex:
+                result.append((start, end, value))
+        return result
 
     async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
         if self.records.get(fileName) == None:
@@ -250,22 +295,26 @@ class FileHandlerProcess(object):
         
         loop = asyncio.get_event_loop()
         wrapper = None
-
         if fileType in ["bigwig", "bigWig", "BigWig", "bw"]:
             wrapper = self.bigwigWrapper
             points = (endIndex - startIndex) if points > (endIndex - startIndex) else points
             step = (endIndex - startIndex)*1.0/points
             zoomlvl, _ = self.executor.submit(fileObj.getZoom, step).result()
-            # start, end, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
+            startIndices, endIndices, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
         elif fileType in ["bigbed", "bb", "BigBed", "bigBed"]:
             wrapper = self.bigbedWrapper
             zoomlvl = -2
-            # start, end, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
+            startIndices, endIndices, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
 
-        
+        print(1)
         m = loop.run_in_executor(self.executor, wrapper, fileObj, 
-                                    chrom, startIndex, endIndex, points, fileId, zoomlvl)
-        # result = [self.updateInprogress(m, fileId, zoomlvl, start, end)]
-        # for f in concurrent.futures.as_completed(futures):
-        #     result.append(f.result())
-        return await m
+                                    chrom, startIndices, endIndices, points, fileId, zoomlvl)
+        self.updateInprogress(m, fileId, zoomlvl, startIndices, endIndices)
+        result = [await m]
+        self.removeInprogress(m, fileId, zoomlvl, startIndices, endIndices)
+        print(2)
+        for f in concurrent.futures.as_completed(futures):
+            result.append(await self.calculateResult(f[0], f[1], f[2]))
+        print(3)
+        print(result)
+        return result

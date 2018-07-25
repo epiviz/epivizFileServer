@@ -13,7 +13,7 @@ class BigBed(BigWig):
         # self.zoomOffset = 0
         self.zoomOffset[os.getpid()] = 0
 
-    async def getRange(self, chr, start, end, respType = "JSON"):
+    async def getRange(self, chr, start, end, zoomlvl = -2, respType = "JSON"):
         if not hasattr(self, 'header'):
             await self.getHeader()
 
