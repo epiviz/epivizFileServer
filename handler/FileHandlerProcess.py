@@ -247,6 +247,7 @@ class FileHandlerProcess(object):
             self.inProgress.get(fileId)[zoomlvl].append((start, end, m))
         g = lambda i: i[0]
         self.inProgress.get(fileId)[zoomlvl].sort(key=g)
+
         # result = await m.result()
         # self.inProgress.get(fileId)[zoomlvl].remove((start, end, m))
 
@@ -255,11 +256,20 @@ class FileHandlerProcess(object):
             self.inProgress.get(fileId)[zoomlvl].remove((start, end, m))
 
     async def calculateResult(self, startIndex, endIndex, future):
-        result = []
-        for (start, end, value) in await future:
-            if start >= startIndex and end <= endIndex:
-                result.append((start, end, value))
+        result = await future
+        loop = asyncio.get_event_loop()
+        m = loop.run_in_executor(self.executor, self.calculateResultInAnotherThread, startIndex, endIndex, result)
+        result = await m
+        print(startIndex, endIndex, result)
         return result
+
+    def calculateResultInAnotherThread(self, startIndex, endIndex, result):
+        r = []
+        for (start, end, value) in result:
+            if start >= startIndex and end <= endIndex:
+                r.append((start, end, value))
+        return r
+
 
     async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
         if self.records.get(fileName) == None:
@@ -306,15 +316,11 @@ class FileHandlerProcess(object):
             zoomlvl = -2
             startIndices, endIndices, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
 
-        print(1)
         m = loop.run_in_executor(self.executor, wrapper, fileObj, 
                                     chrom, startIndices, endIndices, points, fileId, zoomlvl)
         self.updateInprogress(m, fileId, zoomlvl, startIndices, endIndices)
         result = [await m]
-        self.removeInprogress(m, fileId, zoomlvl, startIndices, endIndices)
-        print(2)
-        for f in concurrent.futures.as_completed(futures):
-            result.append(await self.calculateResult(f[0], f[1], f[2]))
-        print(3)
+        for (fStart, fEnd, fFuture) in futures:
+            result.append(await self.calculateResult(fStart, fEnd, fFuture))
         print(result)
-        return result
+        return self.merge(result)
