@@ -167,7 +167,7 @@ class BigWig(BaseFile):
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end)
 
         for node in filtered_nodes:
-            result.append(self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5]))
+            result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
 
         return result
 
