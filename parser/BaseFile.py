@@ -5,10 +5,7 @@
 import struct
 import zlib
 import requests
-# from requests_futures.sessions import FuturesSession
 import ujson
-
-# session = FuturesSession(max_workers=10)
 
 class BaseFile(object):
     """

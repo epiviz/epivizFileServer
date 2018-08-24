@@ -67,6 +67,8 @@ class BigWig(BaseFile):
         if not hasattr(self, 'zooms'):
             self.zooms = {}
             totalLevels = self.header.get("zoomLevels")
+            if totalLevels <= 0:
+                return -2, self.header.get("fullIndexOffset")
             data = self.get_bytes(64, totalLevels * 24)
             
             for level in range(0, totalLevels):
