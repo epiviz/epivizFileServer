@@ -6,8 +6,6 @@ app = Sanic()
 ph = None
 # the length of time that server schedules a file obj pickle
 fileTime = 900 # s
-# the length of time that server cleans unused records from db
-recordTime = 1500 # s
 MAXWORKER = 10
 async def schedulePickle():
     while True:
@@ -17,16 +15,10 @@ async def schedulePickle():
             asyncio.ensure_future(stuff)
         print('Server scheduled file OBJ cleaning!')
 
-async def cleanDB():
-    while True:
-        await asyncio.sleep(recordTime)
-        asyncio.ensure_future(ph.cleanDbRecord())
-        print('Server scheduled DB cleaning!')
-
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
     global ph
-    ph = FileHandlerProcess(fileTime, recordTime, MAXWORKER)
+    ph = FileHandlerProcess(fileTime, MAXWORKER)
     print("FileHandler created")
     print('Server successfully started!')
 
@@ -67,7 +59,6 @@ def printRequest(request):
     return response.text(str(request))
 
 app.add_task(schedulePickle())
-app.add_task(cleanDB())
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
