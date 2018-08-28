@@ -1,7 +1,6 @@
 from multiprocessing import Process, Manager, Lock
 from parser import BaseFile, BigWig, BigBed
 from datetime import datetime, timedelta
-import pymysql.cursors
 import pickle
 import os
 # import sqlite3
@@ -10,51 +9,22 @@ import concurrent.futures
 import threading
 import handler.utils as utils
 
-dbUsername = 'root'
-dbPassword = '123123123'
-
 
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
-    def __init__(self, fileTime, recordTime, MAXWORKER):
+    def __init__(self, fileTime, MAXWORKER):
         # self.manager = Manager()
         # self.dict = self.manager.dict()
         self.records = {}
         self.fileTime = fileTime
-        self.recordTime = recordTime
         self.ManagerLock = Lock()
         self.counter = 0
-        self.dbConnection = {}
         self.inProgress = {}
-
+ 
         # if in the future we switch to python 3.7
         # self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER, initializer = self.threadInit, initargs=())
 
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
-
-        # self.db = sqlite3.connect('data.db', check_same_thread=False)
-        self.mainConnection = pymysql.connect(host='localhost',
-                    user=dbUsername,
-                    password=dbPassword,
-                    db='DB',
-                    charset='utf8mb4',
-                    cursorclass=pymysql.cursors.DictCursor,
-                    autocommit=True)   
-        # self.c = self.db.cursor()
-        c = self.mainConnection.cursor()
-        c.execute('''DROP TABLE IF EXISTS cache''')
-
-        #self.c.execute('''CREATE TABLE cache
-        #     (fileId integer, lastTime timestamp, zoomlvl integer, startI integer, endI integer, chrom text, valueBW real, valueBB text,
-        #      UNIQUE(fileId, zoomlvl, startI, endI))''')
-        c.execute('''CREATE TABLE cache
-             (fileId int, lastTime timestamp, zoomlvl int, startI bigint, endI bigint, chrom varchar(255), valueBW double, valueBB varchar(255),
-             UNIQUE(fileId, zoomlvl, startI, endI))''')
-        # c.execute('''ALTER TABLE  cache 
-        #             ADD UNIQUE indexname
-        #             (fileId, zoomlvl, startI, endI);''')
-        self.mainConnection.commit()
-        c.close()
 
     def cleanFileOBJ(self):
         tasks = []
@@ -62,12 +32,6 @@ class FileHandlerProcess(object):
             if datetime.now() - record.get("time") > timedelta(seconds = self.fileTime) and not record.get("pickled"):
                 tasks.append(self.pickleFileObject(fileName))
         return tasks
-
-    async def cleanDbRecord(self):
-        c = self.mainConnection.cursor()
-        c.execute('DELETE FROM cache WHERE lastTime < %s', (datetime.now() - timedelta(seconds = self.recordTime),))
-        self.mainConnection.commit()
-        c.close()
 
     def threadInit(self):
         self.dbConnection[threading.get_ident()] = pymysql.connect(host='localhost',
@@ -104,97 +68,23 @@ class FileHandlerProcess(object):
         self.ManagerLock.release()
         return self.records.get(fileName)["ID"]
 
-    def updateTime(self, fileName):
-        record = self.records.get(fileName)
-        record["time"] = datetime.now()
-        while record["pickling"]:
-            pass
-        if record["pickled"]:
-            record["pickling"] = True
-            record["pickled"] = False
-            filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "rb")
-            record["fileObj"] = pickle.load(filehandler)
-            record["fileObj"].reinitLock()
-            record["pickling"] = False
-            filehandler.close()
-            os.remove(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache")
-
-        return record["fileObj"], record["ID"]
-
-    # the start and end indices will be arrays of non consequtive ranges
-    def sqlQuery(self, startIndices, endIndices, chrom, zoomlvl, fileId, col):
-        result = []
-        start = []
-        end = []
-        print(self.dbConnection)
-        c = self.getConnection(threading.get_ident()).cursor()
-        # for row in self.c.execute('SELECT startI, endI, valueBW FROM cache WHERE (fileId=%s AND zoomlvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
-        #     (fileId, zoomlvl, startIndex, endIndex, chrom)):
-            # result.append((row[0], row[1], row[2]))
-            # # calculate missing range
-            # if row[0] > startIndex:
-            #     start.append(startIndex)
-            #     end.append(row[0])
-            # startIndex = row[1]
-        for startIndex, endIndex in zip(startIndices, endIndices):
-            c.execute('SELECT startI, endI, %s FROM cache WHERE (fileId=%s AND zoomlvl=%s AND startI>=%s AND endI<=%s AND chrom=%s)', 
-                (col, fileId, zoomlvl, startIndex, endIndex, chrom))
-            for row in c.fetchall():
-                result.append((row["startI"], row["endI"], row[col]))
-                # calculate missing range
-                if row["startI"] > startIndex:
-                    start.append(startIndex)
-                    end.append(row["startI"])
-                startIndex = row["endI"]
-            start.append(startIndex)
-            end.append(endIndex)
-        c.close()
-        return start, end, result
-
-    def addToDb(self, result, chrom, fileId, zoomlvl, col):
-        c = self.getConnection(threading.get_ident()).cursor()
-        # for s, e, v in zip(result.gets("start"), result.gets("end"), result.gets("value")):
-        for r in result:
-            for s in r:
-                if col is "valueBB":
-                    bb = s[2]
-                    bw = 0
-                else:
-                    bw = s[2]
-                    bb = 0
-                c.execute("INSERT INTO cache VALUES (%s, %s, %s, %s, %s, %s, %f, %f) ON DUPLICATE KEY UPDATE lastTime = %s", 
-                    (fileId, datetime.now(), zoomlvl, s[0], s[1], chrom, bw, bb, datetime.now()))
-                # c.execute("UPDATE cache SET lastTime = %s WHERE (fileId=%s AND zoomlvl=%s AND startI=%s AND endI=%s AND chrom=%s)",
-                #     (datetime.now(), fileId, zoomlvl, s[0], s[1], chrom))
-        self.connection.commit()
-        c.close()
 
     def bigwigWrapper(self, fileObj, chrom, startIndices, endIndices, points, fileId, zoomlvl):
         f=[]
         result = []
-        (start, end, dbRusult) = self.sqlQuery(startIndices, endIndices, chrom, zoomlvl, fileId, "valueBW")
-        for s, e in zip(start, end):
+        for s, e in zip(startIndices, endIndices):
             f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomlvl))
         for t in concurrent.futures.as_completed(f):
             result.append(t.result())
-        self.executor.submit(self.addToDb, result, chrom, fileId, zoomlvl, "valueBW")
-        # asyncio.ensure_future(addToDb)
-        # return await self.mergeBW(result, dbRusult)
-        result.append(dbRusult)
         return self.merge(result)
 
     async def bigbedWrapper(self, fileObj, chrom, startIndices, endIndices, fileId, zoomlvl = -2):
         f=[]
         result = []
-        (start, end, dbRusult) = self.sqlQuery(startIndices, endIndices, chrom, zoomlvl, fileId, "valueBB")
-        for s, e in zip(start, end):
+        for s, e in zip(startIndices, endIndices):
             f.append(self.executor.submit(fileObj.getRange, chrom, s, e, zoomlvl = zoomlvl))
         for t in concurrent.futures.as_completed(f):
             result.append(t.result())
-        self.executor.submit(self.addToDb, result, chrom, fileId, zoomlvl, "valueBB")
-        # asyncio.ensure_future(addToDb)
-        # return await self.mergeBW(result, dbRusult)
-        result.append(dbRusult)
         return self.merge(result)
 
     def merge(self, result):
@@ -294,7 +184,7 @@ class FileHandlerProcess(object):
         return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex, fileId)
 
 
-    async def handleFile(self, fileName, fileType, chrom, startIndex, endIndex,points):
+    async def handleFile(self, fileName, fileType, chrom, startIndex, endIndex, points):
         if self.records.get(fileName) == None:
             fileObj = utils.create_parser_object(fileType, 
                                                 fileName)

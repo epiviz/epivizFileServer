@@ -13,13 +13,12 @@ app = Sanic()
 CORS(app)
 ph = None
 fileTime = 900 # s
-recordTime = 1500 # s
 MAXWORKER = 10
 
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
     global ph
-    ph = FileHandlerProcess(fileTime, recordTime, MAXWORKER)
+    ph = FileHandlerProcess(fileTime, MAXWORKER)
     print("FileHandler created")
     print('Server successfully started!')
 
