@@ -9,6 +9,9 @@ import concurrent.futures
 import threading
 import handler.utils as utils
 
+# clean up finished futures
+# grab proper result from those futures
+
 
 class FileHandlerProcess(object):
     """docstring for ProcessHandler"""
@@ -150,7 +153,7 @@ class FileHandlerProcess(object):
         loop = asyncio.get_event_loop()
         m = loop.run_in_executor(self.executor, self.calculateResultInAnotherThread, startIndex, endIndex, result)
         result = await m
-        print(startIndex, endIndex, result)
+        print(result)
         return result
 
     def calculateResultInAnotherThread(self, startIndex, endIndex, result):
@@ -184,6 +187,23 @@ class FileHandlerProcess(object):
         return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex, fileId)
 
 
+    def updateTime(self, fileName):
+        record = self.records.get(fileName)
+        record["time"] = datetime.now()
+        while record["pickling"]:
+            pass
+        if record["pickled"]:
+            record["pickling"] = True
+            record["pickled"] = False
+            filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "rb")
+            record["fileObj"] = pickle.load(filehandler)
+            record["fileObj"].reinitLock()
+            record["pickling"] = False
+            filehandler.close()
+            os.remove(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache")
+
+        return record["fileObj"], record["ID"]
+
     async def handleFile(self, fileName, fileType, chrom, startIndex, endIndex, points):
         if self.records.get(fileName) == None:
             fileObj = utils.create_parser_object(fileType, 
@@ -210,7 +230,9 @@ class FileHandlerProcess(object):
                                     chrom, startIndices, endIndices, points, fileId, zoomlvl)
         self.updateInprogress(m, fileId, zoomlvl, startIndices, endIndices)
         result = [await m]
+        print("futures", futures)
         for (fStart, fEnd, fFuture) in futures:
             result.append(await self.calculateResult(fStart, fEnd, fFuture))
-        print(result)
+
+        self.removeInprogress(m, fileId, zoomlvl, startIndices, endIndices)
         return self.merge(result)
