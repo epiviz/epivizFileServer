@@ -54,9 +54,9 @@ class BigWig(BaseFile):
         bins = (end - start) if bins > (end - start) else bins
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
         zoomlvl, zoomOffset = self.getZoom(zoomlvl, bins)
+
         if self.tree.get(zoomlvl) is None:
             self.tree[zoomlvl] = self.getTree(zoomlvl)
-
         values = self.getValues(chr, start, end, zoomlvl)
         return values
 
@@ -164,7 +164,7 @@ class BigWig(BaseFile):
             return result
 
         rootNode = self.readRtreeNode(zoomlvl, offset)
-        filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end)
+        filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
 
         for node in filtered_nodes:
             result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
@@ -254,7 +254,11 @@ class BigWig(BaseFile):
                 startv += itemStep
                 endv = startv + itemSpan
             
-            if endv >= start and startv <= end:
-                result.append((startv, endv, valuev))
+            if zoomlvl is not -2:
+                if endv >= start and startv <= end and zoomChromID == chrmId:
+                    result.append((startv, endv, valuev))
+            else:
+                if endv >= start and startv <= end and chromId == chrmId:
+                    result.append((startv, endv, valuev))
 
         return result
