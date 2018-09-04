@@ -57,6 +57,7 @@ class BigWig(BaseFile):
 
         if self.tree.get(zoomlvl) is None:
             self.tree[zoomlvl] = self.getTree(zoomlvl)
+
         values = self.getValues(chr, start, end, zoomlvl)
         return values
 
@@ -242,7 +243,7 @@ class BigWig(BaseFile):
 
         for i in range(0, itemCount):
             if zoomlvl is not -2:
-                (zoomChromID, startv, endv, validCount, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[i*32 : (i+1)*32])
+                (chromId, startv, endv, validCount, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[i*32 : (i+1)*32])
                 valuev = sumData / validCount
             elif iType == 1:
                 (startv, endv, valuev) = struct.unpack(self.endian + "IIf", decom[24 + 12*i : 24 + 12*(i+1)])
@@ -254,11 +255,7 @@ class BigWig(BaseFile):
                 startv += itemStep
                 endv = startv + itemSpan
             
-            if zoomlvl is not -2:
-                if endv >= start and startv <= end and zoomChromID == chrmId:
-                    result.append((startv, endv, valuev))
-            else:
-                if endv >= start and startv <= end and chromId == chrmId:
-                    result.append((startv, endv, valuev))
+            if endv >= start and startv <= end and chromId == chrmId:
+                result.append((chromId, startv, endv, valuev))
 
         return result
