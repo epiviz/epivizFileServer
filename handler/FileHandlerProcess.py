@@ -81,7 +81,7 @@ class FileHandlerProcess(object):
             result.append(t.result())
         return self.merge(result)
 
-    async def bigbedWrapper(self, fileObj, chrom, startIndices, endIndices, fileId, zoomlvl = -2):
+    def bigbedWrapper(self, fileObj, chrom, startIndices, endIndices, fileId, zoomlvl = -2):
         f=[]
         result = []
         for s, e in zip(startIndices, endIndices):
@@ -107,7 +107,7 @@ class FileHandlerProcess(object):
             if self.inProgress.get(fileId).get(zoomlvl) is not None:
                 for (start, end, future) in self.inProgress.get(fileId).get(zoomlvl):
                     # calculate missing range
-                    if start > endIndex:
+                    if start >= endIndex or startIndex == endIndex:
                         break
                     elif start >= startIndex and end < endIndex:
                         futures.append((start, end, future))
@@ -126,9 +126,9 @@ class FileHandlerProcess(object):
                         futures.append((startIndex, endIndex, future))
                         startIndex = endIndex
 
-        startIndices.append(startIndex)
-        endIndices.append(endIndex)
-
+        if startIndex is not endIndex:
+            startIndices.append(startIndex)
+            endIndices.append(endIndex)
         return startIndices, endIndices, futures
 
     def updateInprogress(self, m, fileId, zoomlvl, startIndices, endIndices):
@@ -148,12 +148,12 @@ class FileHandlerProcess(object):
         for start, end in zip(startIndices, endIndices):
             self.inProgress.get(fileId)[zoomlvl].remove((start, end, m))
 
+
     async def calculateResult(self, startIndex, endIndex, future):
         result = await future
         loop = asyncio.get_event_loop()
         m = loop.run_in_executor(self.executor, self.calculateResultInAnotherThread, startIndex, endIndex, result)
         result = await m
-        print(result)
         return result
 
     def calculateResultInAnotherThread(self, startIndex, endIndex, result):
@@ -162,30 +162,6 @@ class FileHandlerProcess(object):
             if start >= startIndex and end <= endIndex:
                 r.append((start, end, value))
         return r
-
-
-    async def handleBigWig(self, fileName, chrom, startIndex, endIndex, points):
-        if self.records.get(fileName) == None:
-            bigwig = BigWig(fileName)
-            bigwig.getHeader()
-            fileId = self.setManager(fileName, bigwig)
-        else:
-            bigwig, fileId = self.updateTime(fileName)
-        loop = asyncio.get_event_loop()
-        m = loop.run_in_executor(self.executor, self.bigwigWrapper, bigwig, chrom, startIndex, endIndex, points, fileId, zoomlvl)
-        return await m
-
-    async def handleBigBed(self, fileName, chrom, startIndex, endIndex):
-        if self.records.get(fileName) == None:
-            # p = BieBedProcess(fileName, "BB")
-            bigbed = BigBed(fileName)
-            await bigbed.getHeader()
-            fileId = self.setManager(fileName, bigbed)
-        else:
-            bigbed, fileId = self.updateTime(fileName)
-        # r.start(chrom, startIndex, endIndex)
-        return await self.bigbedWrapper(bigbed, chrom, startIndex, endIndex, fileId)
-
 
     def updateTime(self, fileName):
         record = self.records.get(fileName)
@@ -226,13 +202,14 @@ class FileHandlerProcess(object):
             zoomlvl = -2
             startIndices, endIndices, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
 
+        print("=======", zoomlvl, startIndices, endIndices, futures)
         m = loop.run_in_executor(self.executor, wrapper, fileObj, 
                                     chrom, startIndices, endIndices, points, fileId, zoomlvl)
         self.updateInprogress(m, fileId, zoomlvl, startIndices, endIndices)
         result = [await m]
-        print("futures", futures)
         for (fStart, fEnd, fFuture) in futures:
-            result.append(await self.calculateResult(fStart, fEnd, fFuture))
+            sadf = await self.calculateResult(fStart, fEnd, fFuture)
+            result.append(sadf)
 
         self.removeInprogress(m, fileId, zoomlvl, startIndices, endIndices)
         return self.merge(result)

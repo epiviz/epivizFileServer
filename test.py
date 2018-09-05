@@ -8,14 +8,18 @@ from handler import FileHandlerProcess
 
 print("############ local file initialization ####################")
 # cProfile.run('test = BigWig("/home/jayaram/.AnnotationHub/39033.bigwig")')
-cProfile.run('ph = FileHandlerProcess(900, 1500, 10)')
+# cProfile.run('ph = FileHandlerProcess(900, 10)')
 # 
 # cProfile.run('test = BigBed("/home/evan/Desktop/epiviz/100transcripts.bb")')
 
 # print("############ local file getRange ####################")
-cProfile.run("result = await ph.handleBigWig('https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig', 'chr9', 10550488, 11554489, 3)")
-cProfile.run('print(result)')
+# cProfile.run("result = await ph.handleFile('https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig', 'chr8', 115343360, 115443360)")
+# cProfile.run('print(result)')
 
+ph = FileHandlerProcess(900, 10)
+test = BigWig('https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig')
+result = test.getRange('chr8', 115343360, 115443360, zoomlvl = 4)
+print(result)
 # cProfile.run('print(test.getRange("chrI", 87262, 87854))')
 
 # # remote File

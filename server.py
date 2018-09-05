@@ -38,7 +38,7 @@ async def getBigWigData(request):
     startIndex = int(request.args.get('start'))
     endIndex = int(request.args.get('end'))
     points = int(request.args.get('points')) if request.args.get('points') != None else 2000
-    result = await ph.handleBigWig(fileName, chrom, startIndex, endIndex, points)
+    result = await ph.handleFile(fileName, "bw", chrom, startIndex, endIndex, points)
     return response.text(str(result))
 
 @app.route("/getBigBedData")
@@ -47,7 +47,7 @@ async def getBigBedData(request):
     chrom = request.args.get('chr')
     startIndex = int(request.args.get('start'))
     endIndex = int(request.args.get('end'))
-    result = await ph.handleBigBed(fileName, chrom, startIndex, endIndex)
+    result = await ph.handleFile(fileName, "bb", chrom, startIndex, endIndex, 0)
     return response.text(str(result))
 
 @app.route("/records")
