@@ -202,7 +202,6 @@ class FileHandlerProcess(object):
             zoomlvl = -2
             startIndices, endIndices, futures = self.locateRedundent(fileId, startIndex, endIndex, zoomlvl)
 
-        print("=======", zoomlvl, startIndices, endIndices, futures)
         m = loop.run_in_executor(self.executor, wrapper, fileObj, 
                                     chrom, startIndices, endIndices, points, fileId, zoomlvl)
         self.updateInprogress(m, fileId, zoomlvl, startIndices, endIndices)
