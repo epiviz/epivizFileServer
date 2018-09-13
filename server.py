@@ -37,7 +37,8 @@ async def getBigWigData(request):
     chrom = request.args.get('chr')
     startIndex = int(request.args.get('start'))
     endIndex = int(request.args.get('end'))
-    points = int(request.args.get('points')) if request.args.get('points') != None else 2000
+    points = int(request.args.get('points')) i
+    f request.args.get('points') != None else 2000
     result = await ph.handleFile(fileName, "bw", chrom, startIndex, endIndex, points)
     return response.text(str(result))
 

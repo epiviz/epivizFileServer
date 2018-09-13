@@ -15,6 +15,7 @@ class BigWig(BaseFile):
         self.tree = {}
         self.zoomOffset = {}
         self.getHeader()
+        self.cacheData = {}
 
     def getHeader(self):
         data = self.get_bytes(0, 4)
@@ -227,8 +228,12 @@ class BigWig(BaseFile):
         return result
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
-        data = self.get_bytes(rdataOffset, rDataSize)
-        decom = zlib.decompress(data) if self.compressed else data
+        if self.cacheData.get(rdataOffset) is not None:
+            decom = self.cacheData[rdataOffset]
+        else:
+            data = self.get_bytes(rdataOffset, rDataSize)
+            decom = zlib.decompress(data) if self.compressed else data
+            self.cacheData[rdataOffset] = decom
         result = []
         startv = 0
         itemCount = 0
