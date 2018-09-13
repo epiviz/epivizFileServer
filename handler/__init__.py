@@ -1,1 +1,1 @@
-from .FileHandlerProcess import FileHandlerProcess
+from .handler import FileHandlerProcess
