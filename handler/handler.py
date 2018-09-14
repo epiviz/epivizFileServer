@@ -25,7 +25,18 @@ class FileHandlerProcess(object):
         record = self.records.get(name)
         return record["obj"]
 
-    @cached()
+    def sync(self, fileObj, update):
+        print(fileObj)
+        for item, d in update.items():
+            if d: 
+                for key, value in d.items():
+                    if not hasattr(fileObj, item): 
+                        setattr(fileObj, item, {})
+                    objItem = getattr(fileObj, item)
+                    if objItem.get(key) is None:
+                        objItem[key] = value            
+
+    # @cached()
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
         if self.records.get(fileName) == None:
             fileObj = utils.create_parser_object(fileType, 
@@ -34,6 +45,9 @@ class FileHandlerProcess(object):
         else:
             fileObj = self.getRecord(fileName)
 
+        print(fileObj)
         future = self.client.submit(fileObj.getRange, chr, start, end, points)
-        data = await self.client.gather(future)
+        data, update = await self.client.gather(future)
+        if update:
+            self.sync(fileObj, update)
         return data

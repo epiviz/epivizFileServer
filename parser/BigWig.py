@@ -13,9 +13,9 @@ class BigWig(BaseFile):
     def __init__(self, file):
         super(BigWig, self).__init__(file)
         self.tree = {}
-        self.zoomOffset = {}
         self.getHeader()
         self.cacheData = {}
+        self.sync = False
 
     def getHeader(self):
         data = self.get_bytes(0, 4)
@@ -46,6 +46,7 @@ class BigWig(BaseFile):
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         if not hasattr(self, 'header'):
+            self.sync = True
             self.getHeader()
         if start > end:
             raise Exception("InputError: chromosome start > end")
@@ -57,16 +58,21 @@ class BigWig(BaseFile):
         zoomlvl, zoomOffset = self.getZoom(zoomlvl, bins)
 
         if self.tree.get(zoomlvl) is None:
+            self.sync = True
             self.tree[zoomlvl] = self.getTree(zoomlvl)
 
         values = self.getValues(chr, start, end, zoomlvl)
-        return values
+
+        if self.sync:
+            return values, {"zoom": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
+        return values, None
 
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset
     # -1 for auto zoom
     def getZoom(self, zoomlvl=-1, binSize = 2000):
         if not hasattr(self, 'zooms'):
+            self.sync = True
             self.zooms = {}
             totalLevels = self.header.get("zoomLevels")
             if totalLevels <= 0:
@@ -135,6 +141,7 @@ class BigWig(BaseFile):
 
     def getId(self, chrmzone):
         if not hasattr(self, 'chrmIds'):
+            self.sync = True
             self.chrmIds = {}
             chromosomeTreeOffset = self.header.get("chromTreeOffset")
             data = self.get_bytes(chromosomeTreeOffset, 36)
@@ -157,6 +164,7 @@ class BigWig(BaseFile):
                     idata = data[dataIndex:dataIndex+8]
                     (chromId, chromSize) = struct.unpack(self.endian + "II", idata)
                     self.chrmIds[key] = chromId
+
         return self.chrmIds.get(chrmzone)
 
     def locateTree(self, chrmId, start, end, zoomlvl, offset):
@@ -228,9 +236,13 @@ class BigWig(BaseFile):
         return result
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
-        if self.cacheData.get(rdataOffset) is not None:
+        print("------")
+        print(dir(self))
+        if self.cacheData.get(rdataOffset):
             decom = self.cacheData[rdataOffset]
+            print("cached")
         else:
+            self.sync = True
             data = self.get_bytes(rdataOffset, rDataSize)
             decom = zlib.decompress(data) if self.compressed else data
             self.cacheData[rdataOffset] = decom
