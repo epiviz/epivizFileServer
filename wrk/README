@@ -1,0 +1,1 @@
+wrk -t10 -c10 -d10s --timeout=1m "http://localhost:8000/?requestId=0&version=5&action=getData&seqName=chr8&start=115534899&end=115544899&measurement=39033&datasource=umd" -s request.lua > req.log

@@ -15,8 +15,6 @@ class FileHandlerProcess(object):
         self.records = {}
         self.client = Client(asynchronous=True)
         self.futures = {}
-
-        # self.executor = concurrent.futures.ThreadPoolExecutor(max_workers = MAXWORKER)
     
     def setRecord(self, name, obj):
         self.records[name] = {"obj":obj}
@@ -26,15 +24,17 @@ class FileHandlerProcess(object):
         return record["obj"]
 
     def sync(self, fileObj, update):
-        print(fileObj)
         for item, d in update.items():
             if d: 
-                for key, value in d.items():
-                    if not hasattr(fileObj, item): 
-                        setattr(fileObj, item, {})
+                if not hasattr(fileObj, item): 
+                    setattr(fileObj, item, d)
+                else :
                     objItem = getattr(fileObj, item)
-                    if objItem.get(key) is None:
-                        objItem[key] = value            
+                    for key, value in d.items():
+                        if objItem.get(key) is None:
+                            objItem[str(key)] = value 
+                    setattr(fileObj, item, objItem)
+        return fileObj
 
     # @cached()
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
@@ -42,12 +42,13 @@ class FileHandlerProcess(object):
             fileObj = utils.create_parser_object(fileType, 
                                                 fileName)
             self.setRecord(fileName, fileObj)
-        else:
-            fileObj = self.getRecord(fileName)
 
-        print(fileObj)
-        future = self.client.submit(fileObj.getRange, chr, start, end, points)
+        fileObj = self.getRecord(fileName)
+        future = self.client.submit(fileObj.daskWrapper, fileObj, chr, start, end, points)
+        # future = self.client.submit(fileObj.getRange, chr, start, end, points)
+        # future = self.client.submit(fileObj.getRange, chr, start, end, points, pure=False)
         data, update = await self.client.gather(future)
         if update:
-            self.sync(fileObj, update)
+            fileObj = self.sync(fileObj, update)
+            self.setRecord(fileName, fileObj)
         return data

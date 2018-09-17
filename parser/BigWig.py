@@ -44,6 +44,18 @@ class BigWig(BaseFile):
                 "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
                 "uncompressBufSize" : uncompressBufSize}
 
+    def daskWrapper(self, fileObj, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+        if hasattr(fileObj, 'zooms'):
+            self.zooms = getattr(fileObj, "zooms")
+        if hasattr(fileObj, 'chrmIds'):
+            self.chrmIds = getattr(fileObj, "chrmIds")
+        if hasattr(fileObj, 'tree'):
+            self.tree = getattr(fileObj, "tree")
+        if hasattr(fileObj, 'cacheData'):
+            self.cacheData = getattr(fileObj, "cacheData")
+        data = self.getRange(chr, start, end, bins, zoomlvl, metric, respType)
+        return data
+
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         if not hasattr(self, 'header'):
             self.sync = True
@@ -57,14 +69,14 @@ class BigWig(BaseFile):
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
         zoomlvl, zoomOffset = self.getZoom(zoomlvl, bins)
 
-        if self.tree.get(zoomlvl) is None:
+        if not self.tree.get(str(zoomlvl)):
             self.sync = True
-            self.tree[zoomlvl] = self.getTree(zoomlvl)
+            self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
 
         values = self.getValues(chr, start, end, zoomlvl)
 
         if self.sync:
-            return values, {"zoom": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
+            return values, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
         return values, None
 
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
@@ -182,7 +194,7 @@ class BigWig(BaseFile):
         return result
 
     def readRtreeHeaderNode(self, zoomlvl):
-        data = self.tree[zoomlvl][:52]
+        data = self.tree.get(str(zoomlvl))[:52]
         (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase, 
             rEndFileOffset, rItemsPerSlot, _,
          rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "IIQIIIIQIIBBH", data)
@@ -191,7 +203,7 @@ class BigWig(BaseFile):
                     "rEndChromIx": rEndChromIx, "rEndBase": rEndBase}
 
     def readRtreeNode(self, zoomlvl, offset):
-        data = self.tree[zoomlvl][offset:offset + 4]
+        data = self.tree.get(str(zoomlvl))[offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return {"rIsLeaf": rIsLeaf, "rCount": rCount, "rOffset": offset + 4}
 
@@ -199,7 +211,7 @@ class BigWig(BaseFile):
         offset = node.get("rOffset")
         if node.get("rIsLeaf"):
             for i in range(0, node.get("rCount")):
-                data = self.tree[zoomlvl][offset + (i * 32) : offset + ( (i+1) * 32 )]
+                data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
                 (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
                 if chrmId < rStartChromIx: break
                 if chrmId < rStartChromIx or chrmId > rEndChromIx: continue
@@ -214,7 +226,7 @@ class BigWig(BaseFile):
                 result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
         else:
             for i in range(0, node.get("rCount")):
-                data = self.tree[zoomlvl][offset + (i * 24) : offset + ( (i+1) * 24 )]
+                data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
                 (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
                 if chrmId < rStartChromIx: break
                 if not (chrmId >= rStartChromIx and chrmId <= rEndChromIx): continue
@@ -236,11 +248,8 @@ class BigWig(BaseFile):
         return result
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
-        print("------")
-        print(dir(self))
-        if self.cacheData.get(rdataOffset):
-            decom = self.cacheData[rdataOffset]
-            print("cached")
+        if self.cacheData.get(str(rdataOffset)):
+            decom = self.cacheData.get(str(rdataOffset))
         else:
             self.sync = True
             data = self.get_bytes(rdataOffset, rDataSize)
