@@ -4,8 +4,9 @@
 
 import struct
 import zlib
-import requests
+# import requests
 import ujson
+import aiohttp
 
 class BaseFile(object):
     """
@@ -38,7 +39,7 @@ class BaseFile(object):
     def formatAsJSON(self, data):
         return ujson.dumps(data)
 
-    def get_bytes(self, offset, size):
+    async def get_bytes(self, offset, size):
         if self.local:
             f = open(self.file, "rb")
             f.seek(offset)
@@ -47,10 +48,25 @@ class BaseFile(object):
             return bin_value
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
-            resp = requests.get(self.file, headers=headers)
-            # resp = session.get(self.file, headers=headers).result()
-            # use requests.codes.ok instead
-            if resp.status_code != 206:
-                raise Exception("URLError")
+            # async with aiohttp.ClientSession() as session:
+            async with aiohttp.request('GET', self.file, headers=headers) as resp:
+                assert resp.status == 200 or resp.status == 206
+                resp = await resp.read()
+                return resp[:size]
 
-            return resp.content[:size]
+    # def get_bytes(self, offset, size):
+    #     if self.local:
+    #         f = open(self.file, "rb")
+    #         f.seek(offset)
+    #         bin_value = f.read(size)
+    #         f.close()
+    #         return bin_value
+    #     else:
+    #         headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
+    #         resp = requests.get(self.file, headers=headers)
+    #         # resp = session.get(self.file, headers=headers).result()
+    #         # use requests.codes.ok instead
+    #         if resp.status_code != 206:
+    #             raise Exception("URLError")
+
+    #         return resp.content[:size]

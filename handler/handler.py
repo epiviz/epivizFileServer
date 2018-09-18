@@ -41,14 +41,18 @@ class FileHandlerProcess(object):
         if self.records.get(fileName) == None:
             fileObj = utils.create_parser_object(fileType, 
                                                 fileName)
+            await fileObj.getHeader()
             self.setRecord(fileName, fileObj)
 
         fileObj = self.getRecord(fileName)
-        future = self.client.submit(fileObj.daskWrapper, fileObj, chr, start, end, points)
+        # print(fileObj.cacheData.keys())
+        # future = await self.client.submit(fileObj.daskWrapper, fileObj, chr, start, end, points)
         # future = self.client.submit(fileObj.getRange, chr, start, end, points)
         # future = self.client.submit(fileObj.getRange, chr, start, end, points, pure=False)
-        data, update = await self.client.gather(future)
-        if update:
-            fileObj = self.sync(fileObj, update)
-            self.setRecord(fileName, fileObj)
+        # data, update = await self.client.gather(future)
+        data, update = await fileObj.getRange(chr, start, end, points)
+        # print(fileObj.cacheData.keys())
+        # if update:
+        #     fileObj = self.sync(fileObj, update)
+        #     self.setRecord(fileName, fileObj)
         return data

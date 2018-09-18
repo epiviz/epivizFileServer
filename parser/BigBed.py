@@ -11,8 +11,8 @@ class BigBed(BigWig):
     def __init__(self, file):
         super(BigBed, self).__init__(file)
 
-    def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
-        data = self.get_bytes(rdataOffset, rDataSize)
+    async def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
+        data = await self.get_bytes(rdataOffset, rDataSize)
         decom = zlib.decompress(data) if self.compressed else data
         result = []
         x = 0

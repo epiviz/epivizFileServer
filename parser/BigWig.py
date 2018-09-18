@@ -13,12 +13,12 @@ class BigWig(BaseFile):
     def __init__(self, file):
         super(BigWig, self).__init__(file)
         self.tree = {}
-        self.getHeader()
+        # self.getHeader()
         self.cacheData = {}
         self.sync = False
 
-    def getHeader(self):
-        data = self.get_bytes(0, 4)
+    async def getHeader(self):
+        data = await self.get_bytes(0, 4)
         # parse magic code for byteswap
         if struct.unpack("I", data)[0] == int(self.__class__.magic, 0):
             self.endian = "="
@@ -27,13 +27,13 @@ class BigWig(BaseFile):
         else:
             raise Exception("BadFileError")
 
-        self.header = self.parse_header()
+        self.header = await self.parse_header()
 
         if self.header.get("uncompressBufSize") == 0:
             self.compressed = False 
 
-    def parse_header(self):
-        data = self.get_bytes(0, 56)
+    async def parse_header(self):
+        data = await self.get_bytes(0, 56)
         (magic, version, zoomLevels, chromTreeOffset, fullDataOffset, fullIndexOffset,
             fieldCount, definedFieldCount) = struct.unpack(self.endian + "IHHQQQHH", data[:36])
 
@@ -44,7 +44,7 @@ class BigWig(BaseFile):
                 "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
                 "uncompressBufSize" : uncompressBufSize}
 
-    def daskWrapper(self, fileObj, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+    async def daskWrapper(self, fileObj, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         if hasattr(fileObj, 'zooms'):
             self.zooms = getattr(fileObj, "zooms")
         if hasattr(fileObj, 'chrmIds'):
@@ -53,13 +53,13 @@ class BigWig(BaseFile):
             self.tree = getattr(fileObj, "tree")
         if hasattr(fileObj, 'cacheData'):
             self.cacheData = getattr(fileObj, "cacheData")
-        data = self.getRange(chr, start, end, bins, zoomlvl, metric, respType)
+        data = await self.getRange(chr, start, end, bins, zoomlvl, metric, respType)
         return data
 
-    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+    async def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         if not hasattr(self, 'header'):
             self.sync = True
-            self.getHeader()
+            await self.getHeader()
         if start > end:
             raise Exception("InputError: chromosome start > end")
         elif start is end:
@@ -67,13 +67,13 @@ class BigWig(BaseFile):
         
         bins = (end - start) if bins > (end - start) else bins
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
-        zoomlvl, zoomOffset = self.getZoom(zoomlvl, bins)
+        zoomlvl, zoomOffset = await self.getZoom(zoomlvl, bins)
 
         if not self.tree.get(str(zoomlvl)):
             self.sync = True
-            self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
+            self.tree[str(zoomlvl)] = await self.getTree(zoomlvl)
 
-        values = self.getValues(chr, start, end, zoomlvl)
+        values = await self.getValues(chr, start, end, zoomlvl)
 
         if self.sync:
             return values, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
@@ -82,14 +82,14 @@ class BigWig(BaseFile):
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset
     # -1 for auto zoom
-    def getZoom(self, zoomlvl=-1, binSize = 2000):
+    async def getZoom(self, zoomlvl=-1, binSize = 2000):
         if not hasattr(self, 'zooms'):
             self.sync = True
             self.zooms = {}
             totalLevels = self.header.get("zoomLevels")
             if totalLevels <= 0:
                 return -2, self.header.get("fullIndexOffset")
-            data = self.get_bytes(64, totalLevels * 24)
+            data = await self.get_bytes(64, totalLevels * 24)
             
             for level in range(0, totalLevels):
                 ldata = data[level*24:(level + 1)*24]
@@ -130,38 +130,38 @@ class BigWig(BaseFile):
             offset = self.header.get("fullIndexOffset")
         return lvl, offset
 
-    def getTree(self, zoomlvl):
+    async def getTree(self, zoomlvl):
         if zoomlvl == -2:
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
-                rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
-            return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
+                rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", await self.get_bytes(self.header["fullIndexOffset"], 48))
+            return await self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
         else:
-            return self.get_bytes(self.zooms[zoomlvl][1], self.zooms[zoomlvl][3]) if self.zooms[zoomlvl][3] != -1 else self.get_bytes(self.zooms[zoomlvl][1], self.zooms[0][1] - self.header["fullIndexOffset"])
+            return await self.get_bytes(self.zooms[zoomlvl][1], self.zooms[zoomlvl][3]) if self.zooms[zoomlvl][3] != -1 else await self.get_bytes(self.zooms[zoomlvl][1], self.zooms[0][1] - self.header["fullIndexOffset"])
         
         raise Exception("get tree error: this should not have happened")
 
-    def getValues(self, chr, start, end, zoomlvl):
+    async def getValues(self, chr, start, end, zoomlvl):
         # Add offset to ignore reading the RTree index header
         offset = 48
 
-        chrmId = self.getId(chr)
+        chrmId = await self.getId(chr)
         if chrmId == None:
             raise Exception("didn't find chromId with the given name")
 
-        values = self.locateTree(chrmId, start, end, zoomlvl, offset)
+        values = await self.locateTree(chrmId, start, end, zoomlvl, offset)
         return values
 
-    def getId(self, chrmzone):
+    async def getId(self, chrmzone):
         if not hasattr(self, 'chrmIds'):
             self.sync = True
             self.chrmIds = {}
             chromosomeTreeOffset = self.header.get("chromTreeOffset")
-            data = self.get_bytes(chromosomeTreeOffset, 36)
+            data = await self.get_bytes(chromosomeTreeOffset, 36)
 
             (treeMagic, blockSize, keySize, valSize, itemCount, treeReserved, isLeaf, nodeReserved, count) = struct.unpack(self.endian + "IIIIQQBBH", data)
             chrmId = -1
 
-            data = self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
+            data = await self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
 
             for y in range(0, count):
                 key = ""
@@ -179,7 +179,7 @@ class BigWig(BaseFile):
 
         return self.chrmIds.get(chrmzone)
 
-    def locateTree(self, chrmId, start, end, zoomlvl, offset):
+    async def locateTree(self, chrmId, start, end, zoomlvl, offset):
 
         result = []
         if start >= end: 
@@ -189,7 +189,7 @@ class BigWig(BaseFile):
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
 
         for node in filtered_nodes:
-            result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
+            result += await self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
 
         return result
 
@@ -247,14 +247,14 @@ class BigWig(BaseFile):
                 self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
         return result
 
-    def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
+    async def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
         if self.cacheData.get(str(rdataOffset)):
             decom = self.cacheData.get(str(rdataOffset))
         else:
             self.sync = True
-            data = self.get_bytes(rdataOffset, rDataSize)
+            data = await self.get_bytes(rdataOffset, rDataSize)
             decom = zlib.decompress(data) if self.compressed else data
-            self.cacheData[rdataOffset] = decom
+            self.cacheData[str(rdataOffset)] = decom
         result = []
         startv = 0
         itemCount = 0
