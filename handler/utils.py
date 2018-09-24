@@ -22,5 +22,6 @@ def create_parser_object(format, source):
         "bigBed": BigBed,
         "bb": BigBed
     }
-
-    return req_manager[format](source)
+    
+    return req_manager[format]
+    # return req_manager[format](source)

@@ -1,5 +1,4 @@
 from multiprocessing import Process, Manager, Lock
-from parser import BaseFile, BigWig, BigBed
 import pickle
 import threading
 import handler.utils as utils
@@ -39,16 +38,11 @@ class FileHandlerProcess(object):
     # @cached()
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
         if self.records.get(fileName) == None:
-            fileObj = utils.create_parser_object(fileType, 
-                                                fileName)
+            fileClass = utils.create_parser_object(fileType, fileName)
+            fileFuture = self.client.submit(fileClass, fileName, actor=True)
+            fileObj = await self.client.gather(fileFuture)
             self.setRecord(fileName, fileObj)
 
         fileObj = self.getRecord(fileName)
-        future = self.client.submit(fileObj.daskWrapper, fileObj, chr, start, end, points)
-        # future = self.client.submit(fileObj.getRange, chr, start, end, points)
-        # future = self.client.submit(fileObj.getRange, chr, start, end, points, pure=False)
-        data, update = await self.client.gather(future)
-        if update:
-            fileObj = self.sync(fileObj, update)
-            self.setRecord(fileName, fileObj)
+        data, _ = await fileObj.getRange(chr, start, end, points)
         return data

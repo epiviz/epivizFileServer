@@ -254,7 +254,7 @@ class BigWig(BaseFile):
             self.sync = True
             data = self.get_bytes(rdataOffset, rDataSize)
             decom = zlib.decompress(data) if self.compressed else data
-            self.cacheData[rdataOffset] = decom
+            self.cacheData[str(rdataOffset)] = decom
         result = []
         startv = 0
         itemCount = 0

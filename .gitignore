@@ -4,4 +4,4 @@ __pycache__/*
 *.DS_Store
 cache/*
 data.db
-dask-worker-space
+dask-worker-space/*
