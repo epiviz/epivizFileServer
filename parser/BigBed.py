@@ -12,8 +12,13 @@ class BigBed(BigWig):
         super(BigBed, self).__init__(file)
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
-        data = self.get_bytes(rdataOffset, rDataSize)
-        decom = zlib.decompress(data) if self.compressed else data
+        if self.cacheData.get(str(rdataOffset)):
+            decom = self.cacheData.get(str(rdataOffset))
+        else:
+            self.sync = True
+            data = self.get_bytes(rdataOffset, rDataSize)
+            decom = zlib.decompress(data) if self.compressed else data
+            self.cacheData[str(rdataOffset)] = decom
         result = []
         x = 0
         length = len(decom)

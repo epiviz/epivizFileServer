@@ -1,0 +1,8 @@
+Running 10s test @ http://localhost:8000/?requestId=0&version=5&action=getData&seqName=chr8&start=114534899&end=115544899&measurement=39033&datasource=umd
+  10 threads and 10 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   692.47ms  143.35ms   1.19s    73.57%
+    Req/Sec     0.99      0.32     2.00     90.00%
+  140 requests in 10.09s, 9.54MB read
+Requests/sec:     13.87
+Transfer/sec:      0.95MB
