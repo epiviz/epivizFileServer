@@ -7,8 +7,11 @@ class SamFile(Object):
         self.cacheData = {}
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
-        iter = self.file.fetch("seq1", 10, 20)
+        iter = self.file.fetch(chr, start, end)
+        result = []
         for x in iter:
-            print (str(x))
+            result.append(x)
+        return result
+
 
 
