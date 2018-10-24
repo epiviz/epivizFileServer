@@ -10,8 +10,8 @@ class SamFile(Object):
         iter = self.file.fetch(chr, start, end)
         result = []
         for x in iter:
-            result.append(x)
+        	returnBin = (x.pos, x.aend, x.query)
+            result.append(returnBin)
         return result
-
 
 

@@ -21,10 +21,10 @@ def create_parser_object(format, source):
         "bigbed": BigBed,
         "bigBed": BigBed,
         "bb": BigBed,
-        "sam", SamFile,
-        "bam", BamFile,
-        "tbx", TbxFile,
-        "tabix", TbxFile,
+        "sam": SamFile,
+        "bam": BamFile,
+        "tbx": TbxFile,
+        "tabix": TbxFile,
     }
     
     return req_manager[format]

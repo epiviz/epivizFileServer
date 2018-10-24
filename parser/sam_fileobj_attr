@@ -1,0 +1,173 @@
+
+>>> k.aend
+142618789
+>>> k.alen
+25
+>>> k.aligned_pairs
+[(0, 142618764), (1, 142618765), (2, 142618766), (3, 142618767), (4, 142618768), (5, 142618769), (6, 142618770), (7, 142618771), (8, 142618772), (9, 142618773), (10, 142618774), (11, 142618775), (12, 142618776), (13, 142618777), (14, 142618778), (15, 142618779), (16, 142618780), (17, 142618781), (18, 142618782), (19, 142618783), (20, 142618784), (21, 142618785), (22, 142618786), (23, 142618787), (24, 142618788)]
+>>> k.bin
+13385
+>>> k.blocks
+[(142618764, 142618789)]
+>>> k.cigar
+[(0, 25)]
+>>> k.cigarstring
+'25M'
+>>> k.cigartuples
+[(0, 25)]
+>>> k.compare
+<built-in method compare of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.flag
+115
+>>> k.from_dict
+<built-in method from_dict of type object at 0x7f13e01eb240>
+>>> k.fromstring
+<built-in method fromstring of type object at 0x7f13e01eb240>
+>>> k.get_aligned_pairs
+<built-in method get_aligned_pairs of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_blocks
+<built-in method get_blocks of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_cigar_stats
+<built-in method get_cigar_stats of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_forward_qualities
+<built-in method get_forward_qualities of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_forward_sequence
+<built-in method get_forward_sequence of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_overlap
+<built-in method get_overlap of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_reference_positions
+<built-in method get_reference_positions of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_reference_sequence
+<built-in method get_reference_sequence of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_tag
+<built-in method get_tag of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.get_tags
+<built-in method get_tags of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.has_tag
+<built-in method has_tag of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.infer_query_length
+<built-in method infer_query_length of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.infer_read_length
+<built-in method infer_read_length of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.inferred_length
+25
+>>> k.is_duplicate
+False
+>>> k.is_paired
+True
+>>> k.is_proper_pair
+True
+>>> k.is_qcfail
+False
+>>> k.is_read1
+True
+>>> k.is_read2
+False
+>>> k.is_reverse
+True
+>>> k.is_secondary
+False
+>>> k.is_supplementary
+False
+>>> k.is_unmapped
+False
+>>> k.isize
+25
+>>> k.mapping_quality
+255
+>>> k.mapq
+255
+>>> k.mate_is_reverse
+True
+>>> k.mate_is_unmapped
+False
+>>> k.mpos
+142618764
+>>> k.mrnm
+0
+>>> k.next_reference_id
+0
+>>> k.next_reference_name
+'1'
+>>> k.next_reference_start
+142618764
+>>> k.opt
+<built-in method opt of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.overlap
+<built-in method overlap of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.pnext
+142618764
+>>> k.pos
+142618764
+>>> k.positions
+[142618764, 142618765, 142618766, 142618767, 142618768, 142618769, 142618770, 142618771, 142618772, 142618773, 142618774, 142618775, 142618776, 142618777, 142618778, 142618779, 142618780, 142618781, 142618782, 142618783, 142618784, 142618785, 142618786, 142618787, 142618788]
+>>> k.qend
+25
+>>> k.qlen
+25
+>>> k.qname
+'read7'
+>>> k.qqual
+'IIGIIIHIGIIFIIIIIIIGIGIII'
+>>> k.qstart
+0
+>>> k.qual
+'IIGIIIHIGIIFIIIIIIIGIGIII'
+>>> k.query
+'CGACCCACTCCGCCATTTTCATCCG'
+>>> k.query_alignment_end
+25
+>>> k.query_alignment_length
+25
+>>> k.query_alignment_qualities
+array('B', [40, 40, 38, 40, 40, 40, 39, 40, 38, 40, 40, 37, 40, 40, 40, 40, 40, 40, 40, 38, 40, 38, 40, 40, 40])
+>>> k.query_alignment_sequence
+'CGACCCACTCCGCCATTTTCATCCG'
+>>> k.query_alignment_start
+0
+>>> k.query_length
+25
+>>> k.query_name
+'read7'
+>>> k.query_qualities
+array('B', [40, 40, 38, 40, 40, 40, 39, 40, 38, 40, 40, 37, 40, 40, 40, 40, 40, 40, 40, 38, 40, 38, 40, 40, 40])
+>>> k.query_sequence
+'CGACCCACTCCGCCATTTTCATCCG'
+>>> k.reference_end
+142618789
+>>> k.reference_id
+0
+>>> k.reference_length
+25
+>>> k.reference_name
+'1'
+>>> k.reference_start
+142618764
+>>> k.rlen
+25
+>>> k.rname
+0
+>>> k.rnext
+0
+>>> k.seq
+'CGACCCACTCCGCCATTTTCATCCG'
+>>> k.setTag
+<built-in method setTag of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.set_tag
+<built-in method set_tag of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.set_tags
+<built-in method set_tags of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.tags
+[('NM', 0), ('ZP', -2147484.0), ('ZL', 25)]
+>>> k.template_length
+25
+>>> k.tid
+0
+>>> k.tlen
+25
+>>> k.to_dict
+<built-in method to_dict of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.to_string
+<built-in method to_string of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
+>>> k.tostring
+<built-in method tostring of pysam.libcalignedsegment.AlignedSegment object at 0x7f13dc925dc8>
