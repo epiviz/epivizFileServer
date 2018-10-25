@@ -12,7 +12,7 @@ class TbxFile(SamFile):
         result = []
         for x in iter:
         	cols = x.split('\t')
-        	result.append({"qname": cols[0], 
+        	result.append((cols[3], cols[3]+cols[8], {"qname": cols[0], 
         					"flag": cols[1],
         					"chrName": cols[2],
         					"pos": cols[3],
@@ -22,6 +22,6 @@ class TbxFile(SamFile):
         					"Pnext": cols[7],
         					"Tlen": cols[8],
         					"SEQ": cols[9],
-        					"QUAL": cols[10]})
+        					"QUAL": cols[10]}))
 
        	return result
