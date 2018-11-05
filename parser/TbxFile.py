@@ -4,7 +4,7 @@ from .SamFile import SamFile
 class TbxFile(SamFile):
 
     def __init__(self, filePath):
-        self.file = pysam.TabixFile(filePath, "rb")
+        self.file = pysam.TabixFile(filePath)
         self.cacheData = {}
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
