@@ -12,8 +12,16 @@ import sys
 app = Sanic()
 CORS(app)
 ph = None
-fileTime = 900 # s
+fileTime = 4 # s
 MAXWORKER = 10
+
+async def schedulePickle():
+    while True:
+        await asyncio.sleep(fileTime)
+        cleanQue = ph.cleanFileOBJ()
+        for stuff in cleanQue:
+            asyncio.ensure_future(stuff)
+        print('Server scheduled file OBJ cleaning!')
 
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
@@ -45,3 +53,10 @@ async def process_request(request):
                             "version": 5
                         },
                     status=200)
+
+# @app.listener('before_server_stop')
+# async def clean_tasks(app, loop):
+#     for task in asyncio.Task.all_tasks():
+#         task.cancel()
+
+app.add_task(schedulePickle())
