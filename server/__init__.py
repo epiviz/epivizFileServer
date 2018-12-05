@@ -6,13 +6,14 @@ import ujson
 from server.request import create_request
 # from aiocache import caches, cached
 from sanic_cors import CORS, cross_origin
+import os
 import sys
 
 
 app = Sanic()
 CORS(app)
 ph = None
-fileTime = 1 # s
+fileTime = 4 # s
 MAXWORKER = 10
 
 async def schedulePickle():
@@ -54,7 +55,18 @@ async def process_request(request):
                         },
                     status=200)
 
-# @app.listener('before_server_stop')
+@app.listener('before_server_stop')
+def clean_up(app, loop):
+    folder = os.getcwd() + "/cache/"
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+        #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+    except Exception as e:
+        print(e)
+    print("cache cleaned")
 # async def clean_tasks(app, loop):
 #     for task in asyncio.Task.all_tasks():
 #         task.cancel()

@@ -140,6 +140,7 @@ class BigWig(BaseFile):
 
     def getTree(self, zoomlvl):
         if zoomlvl == -2:
+            print("raw tree")
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
                 rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
             return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)

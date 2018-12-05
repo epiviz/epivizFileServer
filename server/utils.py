@@ -33,8 +33,7 @@ async def format_result(input_data, params, offset=True):
     input_json = []
 
     for item in input_data:
-        input_json.append({"start": item[0], "end": item[1], measurement: round(item[2], 2)})
-
+        input_json.append({"chr":item[0],  "start": item[1], "end": item[2], measurement: item[3]})
     input = pandas.read_json(ujson.dumps(input_json), orient="records")
     input = input.drop_duplicates()
     input.start = input.start.astype("float")
