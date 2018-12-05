@@ -176,15 +176,15 @@ class DataRequest(EpivizRequest):
         file_index = None
 
         for i, m in enumerate(all_measurements.get("id")):
-            if m == self.params.get("measurement"):
+            if m == self.params.get("measurement")[0]:
                 file_index = i
 
         # fileObj = utils.create_parser_object(file_measurement.get("file_type"), 
         #                                         file_measurement.get("url"))
 
         try:
-            fileName = all_measurements.get("datasourceGroup")[i]
-            fileType = all_measurements.get("datasourceId")[i]
+            fileName = all_measurements.get("datasourceGroup")[file_index]
+            fileType = all_measurements.get("datasourceId")[file_index]
             measurement = self.params.get("measurement")
             chrom = self.params.get('seqName')
             startIndex = int(self.params.get('start'))
