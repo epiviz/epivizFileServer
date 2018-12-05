@@ -12,7 +12,7 @@ import sys
 app = Sanic()
 CORS(app)
 ph = None
-fileTime = 4 # s
+fileTime = 1 # s
 MAXWORKER = 10
 
 async def schedulePickle():

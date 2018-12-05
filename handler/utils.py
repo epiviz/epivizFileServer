@@ -1,4 +1,4 @@
-from parser import BigBed, BigWig
+from parser import BigBed, BigWig, SamFile, TbxFile, BamFile
 
 def create_parser_object(format, source):
     """
@@ -30,6 +30,6 @@ def create_parser_object(format, source):
     return req_manager[format]
     # return req_manager[format](source)
 
-def addFileObj(self, fileName, fileObj):
-    self.records[fileName] = {"fileObj":fileObj, "time": datetime.now(), "pickled": False, "pickling": False}
-    return self.records.get(fileName).get("fileObj")
+# def addFileObj(self, fileName, fileObj):
+#     self.records[fileName] = {"fileObj":fileObj, "time": datetime.now(), "pickled": False, "pickling": False}
+#     return self.records.get(fileName).get("fileObj")

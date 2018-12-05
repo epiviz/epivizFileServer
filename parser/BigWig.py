@@ -17,6 +17,14 @@ class BigWig(BaseFile):
         self.cacheData = {}
         self.sync = False
 
+    def get_cache(self):
+        return (self.tree, self.endian, self.header, self.compressed, self.cacheData)
+
+    def set_cache(self, cache):
+        (self.tree, self.endian, self.header, self.compressed, self.cacheData) = cache
+
+
+
     def getHeader(self):
         data = self.get_bytes(0, 4)
         # parse magic code for byteswap

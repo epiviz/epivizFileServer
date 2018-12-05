@@ -2,6 +2,7 @@ from multiprocessing import Process, Manager, Lock
 import pickle
 import threading
 import handler.utils as utils
+import os
 from datetime import datetime, timedelta
 from aiocache import cached, SimpleMemoryCache
 from aiocache.serializers import JsonSerializer
@@ -14,18 +15,41 @@ class FileHandlerProcess(object):
     def __init__(self, fileTime, MAXWORKER):
         self.records = {}
         self.client = Client(asynchronous=True)
+        self.fileTime = fileTime
+        self.IDcount = 0
         # self.futures = {}
     
-    def setRecord(self, name, obj):
+
+    def setRecord(self, name, fileObj, fileType):
         # self.records[name] = {"obj":obj}
-        self.records[fileName] = {"fileObj":fileObj, "time": datetime.now(), "pickled": False, "pickling": False}
+        self.records[name] = {"fileObj":fileObj, "time": datetime.now(), "pickled": False, "pickling": False, 
+                            "ID": self.IDcount, "fileType": fileType}
+        self.IDcount += 1
         # return self.records.get(fileName).get("fileObj")
 
-    def getRecord(self, name):
+    async def getRecord(self, name):
         record = self.records.get(name)
+        while record["pickling"]:
+            pass
+        if record["pickled"]:
+            record["pickling"] = True
+            record["pickled"] = False
+            filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "rb")
+
+            cache = pickle.load(filehandler)
+            fileType = record.get("fileType")
+            fileClass = utils.create_parser_object(fileType, name)
+            fileFuture = self.client.submit(fileClass, name, actor=True)
+            fileObj = await self.client.gather(fileFuture)
+            record["fileObj"] = fileObj
+            await fileObj.set_cache(cache)
+
+            record["pickling"] = False
+            filehandler.close()
+            os.remove(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache")
         # return record["obj"]
         record["time"] = datetime.now()
-        return record["fileObj"]
+        return record.get("fileObj")
 
     def cleanFileOBJ(self):
         tasks = []
@@ -38,25 +62,14 @@ class FileHandlerProcess(object):
         record = self.records.get(fileName)
         record["pickling"] = True
         record["pickled"] = True
-        record["fileObj"].clearLock()
+        # record["fileObj"].clearLock()
         filehandler = open(os.getcwd() + "/cache/"+ str(record["ID"]) + ".cache", "wb")
-        pickle.dump(record["fileObj"], filehandler)
+        cache = await record["fileObj"].get_cache()
+        # pickle.dump(record["fileObj"], filehandler)
+        pickle.dump(cache, filehandler)
         filehandler.close()
         record["pickling"] = False
         record["fileObj"] = None
-
-    # def sync(self, fileObj, update):
-    #     for item, d in update.items():
-    #         if d: 
-    #             if not hasattr(fileObj, item): 
-    #                 setattr(fileObj, item, d)
-    #             else :
-    #                 objItem = getattr(fileObj, item)
-    #                 for key, value in d.items():
-    #                     if objItem.get(key) is None:
-    #                         objItem[str(key)] = value 
-    #                 setattr(fileObj, item, objItem)
-    #     return fileObj
 
     # @cached()
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
@@ -64,8 +77,8 @@ class FileHandlerProcess(object):
             fileClass = utils.create_parser_object(fileType, fileName)
             fileFuture = self.client.submit(fileClass, fileName, actor=True)
             fileObj = await self.client.gather(fileFuture)
-            self.setRecord(fileName, fileObj)
+            self.setRecord(fileName, fileObj, fileType)
 
-        fileObj = self.getRecord(fileName)
+        fileObj = await self.getRecord(fileName)
         data, _ = await fileObj.getRange(chr, start, end, points)
         return data
