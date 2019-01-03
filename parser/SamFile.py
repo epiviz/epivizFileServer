@@ -6,10 +6,10 @@ class SamFile(object):
         self.file = pysam.AlignmentFile(filePath, "r")
         self.cacheData = {}
 
-    def get_cache():
+    def get_cache(self):
         return self.cacheData
 
-    def set_cache(cache):
+    def set_cache(self, cache):
         self.cacheData = cache
         
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
