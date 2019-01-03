@@ -1,0 +1,38 @@
+[
+  {
+    "url": "https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "39033",
+    "annotation": {
+      "source": "AnnotationHub"
+    }
+  },
+  {
+    "url": "https://obj.umiacs.umd.edu/bigwig-files/39031.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "39031",
+    "annotation": {
+      "source": "AnnotationHub"
+    }
+  },
+  {
+    "url": "https://obj.umiacs.umd.edu/bigwig-files/38768.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "38768",
+    "annotation": {
+      "source": "AnnotationHub"
+    }
+  },
+  {
+    "url": "https://obj.umiacs.umd.edu/bigwig-files/39214.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "39214",
+    "annotation": {
+      "source": "AnnotationHub"
+    }
+  }
+]
