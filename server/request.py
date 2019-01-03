@@ -29,7 +29,6 @@ def create_request(action, request):
 
     return req_manager[action](request)
 
-
 class EpivizRequest(object):
     """
         Base class to process requests
@@ -72,7 +71,7 @@ class SeqInfoRequest(EpivizRequest):
     def validate_params(self, request):
         return None
 
-    async def get_data(self, ph):
+    async def get_data(self):
 
         genome = self.seqs
         error = None
@@ -86,12 +85,11 @@ class MeasurementRequest(EpivizRequest):
     def __init__(self, request):
         super(MeasurementRequest, self).__init__(request)
         self.params = self.validate_params(request)
-        self.fileSource = os.getcwd() + "/server/files.json"
 
     def validate_params(self, request):
         return None
 
-    async def get_data(self, ph):
+    async def get_data(self, mMgr):
 
         result = {
             "annotation": [],
@@ -108,25 +106,24 @@ class MeasurementRequest(EpivizRequest):
         error = None
 
         try:
-            json_data = open(self.fileSource, "r")
-            measurements = ujson.loads(json_data.read())
+            measurements = mMgr.get_measurements()
 
-            for m in measurements:
-                result.get("annotation").append(m.get("annotation"))
-                result.get("datasourceGroup").append(m.get("url"))
-                result.get("datasourceId").append(m.get("file_type"))
+            for rec in measurements:
+                result.get("annotation").append(rec.annotation)
+                result.get("datasourceGroup").append(rec.datasource)
+                result.get("datasourceId").append(rec.source)
                 result.get("defaultChartType").append("track")
-                result.get("id").append(m.get("name"))
-                result.get("maxValue").append(0)
-                result.get("minValue").append(0)
-                result.get("name").append(m.get("name"))
+                result.get("id").append(rec.mid)
+                result.get("maxValue").append(rec.minValue)
+                result.get("minValue").append(rec.maxValue)
+                result.get("name").append(rec.name)
 
                 result_type = "feature"
-                if m.get("datatype") == "annotation":
+                if rec.isGenes:
                     result_type = "range"
                 result.get("type").append(result_type)
 
-                result.get("metadata").append(None)
+                result.get("metadata").append(rec.metadata)
 
         except Exception as e:
             error = e
@@ -170,47 +167,20 @@ class DataRequest(EpivizRequest):
                     raise Exception("missing params in request")
         return params
 
-    async def get_data(self, ph):
-
-        all_measurements, error = await MeasurementRequest({}).get_data(ph)
-        file_index = None
-
-        for i, m in enumerate(all_measurements.get("id")):
-            if m == self.params.get("measurement")[0]:
-                file_index = i
-
-        # fileObj = utils.create_parser_object(file_measurement.get("file_type"), 
-        #                                         file_measurement.get("url"))
+    async def get_data(self, mMgr):
+        measurements = mMgr.get_measurements()
+        result = None
 
         try:
-            fileName = all_measurements.get("datasourceGroup")[file_index]
-            fileType = all_measurements.get("datasourceId")[file_index]
-            measurement = self.params.get("measurement")
-            chrom = self.params.get('seqName')
-            startIndex = int(self.params.get('start'))
-            endIndex = int(self.params.get('end'))
-            points = int(self.params.get('points')) if self.params.get('points') != None else 2000
-            result = await ph.handleFile(fileName, fileType, chrom, startIndex, endIndex, points)
-
-            if self.request.get("action") == "getRows":
-                data = await utils.format_result(result, self.params)
-                if len(result) == 0:
-                    return data["rows"], ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-                else:
-                    return data["rows"], None
-            elif self.request.get("action") == "getValues":
-                # if self.params.get("seqName") is not None:
-                #     result = utils.bin_rows(result)
-                data = await utils.format_result(result, self.params)
-                if len(result) == 0:
-                    return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-                else:
-                    return data, None
-            else:
-                data = await utils.format_result(result, self.params, False)
-                if len(result) == 0:
-                    return data, ("query did not match any %s measurement from %s " % (measurement, self.params.get("datasource")))
-                else:
-                    return data, None
+            for rec in measurements:
+                if rec.mid == self.params.get("measurement")[0] and rec.datasource == self.params.get("datasource"):
+                    result, _ = await rec.get_data(self.params.get("seqName"), 
+                                int(self.params.get("start")), 
+                                int(self.params.get("end"))
+                            )
+            print(result)
+            # result = await utils.format_result(result, self.params)
+            result = result.to_json(orient='records')
+            return result, None
         except Exception as e:
             return {}, str(e)

@@ -41,7 +41,7 @@ async def format_result(input_data, params, offset=True):
     input[measurement] = input[measurement].astype("float")
     input["chr"] = params.get("seqName")
 
-    input = bin_rows(input)
+    # input = bin_rows(input)
     # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
     globalStartIndex = None
 
