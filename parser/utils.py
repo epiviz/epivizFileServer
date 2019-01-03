@@ -1,8 +1,4 @@
-from .BigBed import BigBed
-from .BigWig import BigWig
-from .SamFile import SamFile
-from .BamFile import BamFile
-from .TbxFile import TbxFile
+import pandas
 
 def create_parser_object(format, source):
     """
@@ -15,6 +11,11 @@ def create_parser_object(format, source):
         Returns:
             An instance of parser class
     """  
+    from .BigBed import BigBed
+    from .BigWig import BigWig
+    from .SamFile import SamFile
+    from .BamFile import BamFile
+    from .TbxFile import TbxFile
 
     req_manager = {
         "BigWig": BigWig,
@@ -32,4 +33,7 @@ def create_parser_object(format, source):
     }
     
     return req_manager[format](source)
-    # return req_manager[format](source)
+
+def toDataFrame(records, header):
+    input = pandas.DataFrame(records, columns=header)
+    return input

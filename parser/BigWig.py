@@ -3,6 +3,7 @@ import struct
 import zlib
 import os
 import math
+from .utils import toDataFrame
 
 class BigWig(BaseFile):
     """
@@ -10,9 +11,10 @@ class BigWig(BaseFile):
     """
     magic = "0x888FFC26"
 
-    def __init__(self, file):
+    def __init__(self, file, columns=None):
         super(BigWig, self).__init__(file)
         self.tree = {}
+        self.columns = columns
         self.getHeader()
         self.cacheData = {}
         self.sync = False
@@ -23,7 +25,9 @@ class BigWig(BaseFile):
     def set_cache(self, cache):
         (self.tree, self.endian, self.header, self.compressed, self.cacheData) = cache
 
-
+    def get_autosql(self):
+        allColumns = ["chr", "start", "end", "score"]
+        return allColumns
 
     def getHeader(self):
         data = self.get_bytes(0, 4)
@@ -36,6 +40,9 @@ class BigWig(BaseFile):
             raise Exception("BadFileError")
 
         self.header = self.parse_header()
+
+        if self.columns is None:
+            self.columns = self.get_autosql()
 
         if self.header.get("uncompressBufSize") == 0:
             self.compressed = False 
@@ -64,7 +71,7 @@ class BigWig(BaseFile):
         data = self.getRange(chr, start, end, bins, zoomlvl, metric, respType)
         return data
 
-    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         if not hasattr(self, 'header'):
             self.sync = True
             self.getHeader()
@@ -83,9 +90,15 @@ class BigWig(BaseFile):
 
         values = self.getValues(chr, start, end, zoomlvl)
 
+        result = values
+        if respType is "DataFrame":
+            result = toDataFrame(values, self.columns)
+            # replace chrmId with chr
+            result["chr"] = chr
+
         if self.sync:
-            return values, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
-        return values, None
+            return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
+        return result, None
 
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset
@@ -140,7 +153,6 @@ class BigWig(BaseFile):
 
     def getTree(self, zoomlvl):
         if zoomlvl == -2:
-            print("raw tree")
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
                 rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
             return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
@@ -156,7 +168,7 @@ class BigWig(BaseFile):
         chrmId = self.getId(chr)
         if chrmId == None:
             raise Exception("didn't find chromId with the given name")
-
+            
         values = self.locateTree(chrmId, start, end, zoomlvl, offset)
         return values
 
@@ -185,7 +197,7 @@ class BigWig(BaseFile):
                     idata = data[dataIndex:dataIndex+8]
                     (chromId, chromSize) = struct.unpack(self.endian + "II", idata)
                     self.chrmIds[key] = chromId
-
+                    
         return self.chrmIds.get(chrmzone)
 
     def locateTree(self, chrmId, start, end, zoomlvl, offset):

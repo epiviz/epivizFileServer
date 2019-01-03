@@ -183,8 +183,7 @@ class FileMeasurement(Measurement):
                 result, _ = file.getRange(chr, start, end)
             else:
                 result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end)
-            print(result)
-            result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
+            # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
             if bin: 
                 result = self.bin_rows(result, chr, start, end)
             return result, None
