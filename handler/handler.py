@@ -73,13 +73,11 @@ class FileHandlerProcess(object):
 
     # @cached()
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
-        print(fileName)
         if self.records.get(fileName) == None:
             fileClass = utils.create_parser_object(fileType, fileName)
             fileFuture = self.client.submit(fileClass, fileName, actor=True)
             fileObj = await self.client.gather(fileFuture)
             self.setRecord(fileName, fileObj, fileType)
-
         fileObj = await self.getRecord(fileName)
         data, _ = await fileObj.getRange(chr, start, end, points)
-        return data
+        return data,_
