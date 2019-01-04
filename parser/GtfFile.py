@@ -2,7 +2,7 @@ import pysam
 from .SamFile import SamFile
 from .utils import toDataFrame
 
-class TbxFile(SamFile):
+class GtfFile(SamFile):
 
     def __init__(self, file, columns=None):
         self.file = pysam.TabixFile(file)
@@ -11,17 +11,14 @@ class TbxFile(SamFile):
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         try:
-            iter = self.file.fetch(chr, start, end)
+            iter = self.file.fetch(chr, start, end, parser=pysam.asGTF())
             result = []
             for x in iter:
                 cols = (chr) + tuple(x.split('\t'))
                 result.append(cols)
 
             if self.columns is None: 
-                colLength = len(result[0])
-                self.columns = ["chr", "start", "end"]
-                for i in colLength:
-                    self.columns.append("column" + str(i))
+                self.columns = ["chr", "feature", "source", "start", "end", "score", "strand", "frame", "attribute"]
 
             if respType is "DataFrame":
                 result = toDataFrame(result, self.columns)

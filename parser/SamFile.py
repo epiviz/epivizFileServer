@@ -3,7 +3,7 @@ from .utils import toDataFrame
 
 class SamFile(object):
 
-    def __init__(self, file, columns):
+    def __init__(self, file, columns=None):
         self.file = pysam.AlignmentFile(file, "r")
         self.cacheData = {}
         self.columns = columns
