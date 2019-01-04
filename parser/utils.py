@@ -1,6 +1,6 @@
 import pandas
 
-def create_parser_object(format, source):
+def create_parser_object(format, source, columns=None):
     """
         Create appropriate File class based on file format
 
@@ -32,7 +32,7 @@ def create_parser_object(format, source):
         "tabix": TbxFile,
     }
     
-    return req_manager[format](source)
+    return req_manager[format](source, columns)
 
 def toDataFrame(records, header):
     input = pandas.DataFrame(records, columns=header)

@@ -23,7 +23,6 @@ def setup_app(measurementsManager):
 def create_fileHandler():
     global app
     app.epivizFileHandler = None
-    # app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
     return app.epivizFileHandler
 
 async def schedulePickle():

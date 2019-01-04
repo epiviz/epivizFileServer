@@ -170,20 +170,26 @@ class FileMeasurement(Measurement):
     def __init__(self, mtype, mid, name, source, datasource="files", annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None):
         super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue)
         self.fileHandler = fileHandler
+        self.columns = None
+        # ["chr", "start", "end"].append(mid)
 
-    def create_parser_object(self, type, name):
+    def create_parser_object(self, type, name, columns=None):
         from parser.utils import create_parser_object as cpo
-        return cpo(type, name)
+        return cpo(type, name, columns)
 
     async def get_data(self, chr, start, end, bin=False):
-        print("handler - %s" % (self.fileHandler))
         try:
             if self.fileHandler is None:
-                file = self.create_parser_object(self.mtype, self.source)
+                file = self.create_parser_object(self.mtype, self.source, self.columns)
                 result, _ = file.getRange(chr, start, end)
             else:
                 result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end)
             # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
+
+            # rename columns from score to mid for BigWigs
+            if self.mtype in ["BigWig", "bigwig", "bw"]:
+                result = result.rename(columns={'score': self.mid})
+
             if bin: 
                 result = self.bin_rows(result, chr, start, end)
             return result, None
@@ -220,7 +226,7 @@ class ComputedMeasurement(Measurement):
 
         result = []
         for measurement in self.measurements:
-            mea_result, _ = measurement.get_data(chr, start, end, bin=True)
+            mea_result, _ = await measurement.get_data(chr, start, end, bin=True)
             # result = [result, mea_result]
             result.append(mea_result)
 
