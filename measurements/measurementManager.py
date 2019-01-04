@@ -30,7 +30,7 @@ class MeasurementManager(object):
 
             tempDbM = DbMeasurement("db", rec["column_name"], rec["measurement_name"],
                             rec["location"], rec["location"], dbConn=dbConn, 
-                            annotation=annotation, metadata=rec["metadata"],
+                            annotation=annotation, metadata=ujson.loads(rec["metadata"]),
                             isGenes=isGene
                         )
             self.measurements.append(tempDbM)

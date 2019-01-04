@@ -178,7 +178,8 @@ class DataRequest(EpivizRequest):
                                 int(self.params.get("start")), 
                                 int(self.params.get("end"))
                             )
-            result = result.to_json(orient='records')
+            # result = result.to_json(orient='records')
+            result = await utils.format_result(result, self.params)
             return result, None
         except Exception as e:
             return {}, str(e)

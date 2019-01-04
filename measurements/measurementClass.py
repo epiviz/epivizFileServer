@@ -156,8 +156,10 @@ class DbMeasurement(Measurement):
                 query = self.query_range
         try:
             result = self.query(query, query_params)
+
             if bin:
                 result = self.bin_rows(result, chr, start, end)
+
             return result, None
         except Exception as e:
             return {}, str(e)

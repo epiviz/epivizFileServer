@@ -27,19 +27,18 @@ def create_parser_object(format, source):
 
     return req_manager[format](source)
 
-async def format_result(input_data, params, offset=True):
+async def format_result(input, params, offset=True):
 
-    measurement = params.get("measurement")[0]
-    input_json = []
-
-    for item in input_data:
-        input_json.append({"chr":item[0],  "start": item[1], "end": item[2], measurement: item[3]})
-    input = pandas.read_json(ujson.dumps(input_json), orient="records")
-    input = input.drop_duplicates()
+    # measurement = params.get("measurement")[0]
+    # input_json = []
+    # for item in input_data:
+    #     input_json.append({"chr":item[0],  "start": item[1], "end": item[2], measurement: item[3]})
+    # input = pandas.read_json(ujson.dumps(input_json), orient="records")
+    # input = input.drop_duplicates()
     input.start = input.start.astype("float")
     input.end = input.end.astype("float")
-    input[measurement] = input[measurement].astype("float")
-    input["chr"] = params.get("seqName")
+    # input[measurement] = input[measurement].astype("float")
+    # input["chr"] = params.get("seqName")
 
     # input = bin_rows(input)
     # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
