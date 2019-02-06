@@ -48,7 +48,7 @@ class EpivizRequest(object):
         """
         raise Exception("NotImplementedException")
 
-    def get_data(self):
+    def get_data(self, mMgr):
         """
             Get Data for this request type
 
@@ -71,7 +71,7 @@ class SeqInfoRequest(EpivizRequest):
     def validate_params(self, request):
         return None
 
-    async def get_data(self):
+    async def get_data(self, mMgr):
 
         genome = self.seqs
         error = None
@@ -173,11 +173,14 @@ class DataRequest(EpivizRequest):
 
         try:
             for rec in measurements:
-                if rec.mid == self.params.get("measurement")[0] and rec.datasource == self.params.get("datasource"):
+                if rec.mid == self.params.get("measurement")[0]:
                     result, _ = await rec.get_data(self.params.get("seqName"), 
                                 int(self.params.get("start")), 
                                 int(self.params.get("end"))
                             )
+                    break
+
+                    # print(result)
             # result = result.to_json(orient='records')
             result = await utils.format_result(result, self.params)
             return result, None

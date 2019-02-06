@@ -38,6 +38,7 @@ class MeasurementManager(object):
     def import_files(self, fileSource, fileHandler=None):
         json_data = open(fileSource, "r")
         result = ujson.loads(json_data.read())
+        measurements = []
 
         for rec in result:
             isGene = False
@@ -49,11 +50,25 @@ class MeasurementManager(object):
                             metadata=rec.get("metadata"), minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler
                         )
+            measurements.append(tempFileM)
             self.measurements.append(tempFileM)
+        
+        return(measurements)
+
+    def import_ahub(self, ahub, handler=None):
+        measurements = []
+        for i, row in ahub.iterrows():
+            if "EpigenomeRoadMapPreparer" in row["preparerclass"]:
+                tempFile = FileMeasurement(row["source_type"], row["ah_id"], row["title"],
+                                row["sourceurl"])
+                self.measurements.append(tempFile)
+                measurements.append(tempFile)
+        return measurements
 
     def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc):
-        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=name, computeFunc=computeFunc)
+        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc)
         self.measurements.append(tempComputeM)
+        return tempComputeM
 
     def get_measurements(self):
         return self.measurements

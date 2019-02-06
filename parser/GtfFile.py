@@ -6,6 +6,7 @@ class GtfFile(SamFile):
 
     def __init__(self, file, columns=None):
         self.file = pysam.TabixFile(file)
+        self.fileSrc = file
         self.cacheData = {}
         self.columns = columns
 

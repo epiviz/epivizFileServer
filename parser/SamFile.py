@@ -5,6 +5,7 @@ class SamFile(object):
 
     def __init__(self, file, columns=None):
         self.file = pysam.AlignmentFile(file, "r")
+        self.fileSrc = file
         self.cacheData = {}
         self.columns = columns
 
@@ -19,7 +20,7 @@ class SamFile(object):
             iter = self.file.fetch(chr, start, end)
             result = []
             for x in iter:
-                returnBin = (chr, x.pos, x.aend, x.query_alignment_sequence, x.query_sequence)
+                returnBin = (x.reference_name, x.reference_start, x.reference_end, x.query_alignment_sequence, x.query_sequence)
                 result.append(returnBin)
 
             if self.columns is None:
