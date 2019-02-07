@@ -1,12 +1,15 @@
 import h5py
+from scipy.sparse import csc_matrix
+import numpy as np
 
-class HDF5(Object):
+class HDF5(object):
 
-	def init(self, file):
+	def __init__(self, file):
 		# self.f = h5py.File(file, 'r')
 		self.f= h5py.File('/Users/evan/Downloads/filtered_feature_bc_matrix.h5', 'r')
 
-	def read_10x(self, chr, query_names):
+	# both chr and query_names are of type array
+	def read_10x_hdf5(self, chr, query_names):
 		folder = self.f['matrix']
 		self.matrix = a = csc_matrix((folder['data'][()], folder['indices'][()], folder['indptr'][()]), shape=(folder['shape'][0],folder['shape'][1]))
 		genes = folder['features']['genome'][()]
@@ -17,6 +20,10 @@ class HDF5(Object):
 		result = {}
 		# need to handle missing query
 		for query,index in zip(query_names, indecis):
-			result[query] = self.matrix[index, :]
+			result[query] = self.matrix[index, :].toarray()
 
 		return result
+
+
+	def getRange(self, chr, start = None, end = None, row_names = None):
+		pass
