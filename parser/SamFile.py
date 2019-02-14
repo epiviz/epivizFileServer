@@ -26,16 +26,18 @@ class SamFile(object):
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         try:
             iter = self.file.fetch(chr, start, end)
-            result = []
-            for x in iter:
-                returnBin = (x.reference_name, x.reference_start, x.reference_end, x.query_alignment_sequence, x.query_sequence)
-                result.append(returnBin)
+            # result = []
+            # for x in iter:
+            #     returnBin = (x.reference_name, x.reference_start, x.reference_end, x.query_alignment_sequence, x.query_sequence)
+            #     result.append(returnBin)
 
-            if self.columns is None:
-                self.columns = ["chr", "start", "end", "query_alignment_sequence", "query_sequence"]
+            # if self.columns is None:
+            #     self.columns = ["chr", "start", "end", "query_alignment_sequence", "query_sequence"]
 
-            if respType is "DataFrame":
-                result = toDataFrame(result, self.columns)
+            # if respType is "DataFrame":
+            #     result = toDataFrame(result, self.columns)
+
+            (self.columns, result, _) = get_range_helper(get_bin, get_col_names, chr, start, end, iter, self.columns)
 
             return result, None
         except ValueError as e:
