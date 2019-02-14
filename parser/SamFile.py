@@ -15,6 +15,14 @@ class SamFile(object):
     def set_cache(self, cache):
         self.cacheData = cache
         
+    def get_bin(x):
+        return (x.reference_name, x.reference_start, x.reference_end, x.query_alignment_sequence, x.query_sequence)
+
+    def get_col_names(columns):
+        if columns is None:
+            columns = ["chr", "start", "end", "query_alignment_sequence", "query_sequence"]
+        return columns
+
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         try:
             iter = self.file.fetch(chr, start, end)
