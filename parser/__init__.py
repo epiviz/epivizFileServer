@@ -6,3 +6,4 @@ from .BamFile import BamFile
 from .TbxFile import TbxFile
 from .GtfFile import GtfFile
 from .HDF5 import HDF5
+from .Helper import get_range_helper
