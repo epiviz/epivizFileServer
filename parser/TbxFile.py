@@ -14,13 +14,16 @@ class TbxFile(SamFile):
         # return (chr) + tuple(x.split('\t'))
         return tuple(x.split('\t'))
 
-    def get_col_names(self, columns, result):
-        if columns is None:
+    def get_col_names(self, result):
+        if self.columns is None:
             colLength = len(result)
-            columns = ["chr", "start", "end"]
+            self.columns = ["chr", "start", "end"]
             for i in range(colLength - 3):
-                columns.append("column" + str(i))
-        return columns
+                self.columns.append("column" + str(i))
+        return self.columns
+
+    def toDF(self, result):
+        return toDataFrame(result, self.columns)
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         try:
@@ -39,7 +42,7 @@ class TbxFile(SamFile):
             # if respType is "DataFrame":
             #     result = toDataFrame(result, self.columns)
 
-            (self.columns, result, _) = get_range_helper(self.get_bin, self.get_col_names, chr, start, end, iter, self.columns, respType)
+            (result, _) = get_range_helper(self.toDF, self.get_bin, self.get_col_names, chr, start, end, iter, self.columns, respType)
 
             return result, None
         except ValueError as e:

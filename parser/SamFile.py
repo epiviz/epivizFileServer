@@ -18,10 +18,13 @@ class SamFile(object):
     def get_bin(self, x):
         return (x.reference_name, x.reference_start, x.reference_end, x.query_alignment_sequence, x.query_sequence)
 
-    def get_col_names(self, columns, result):
-        if columns is None:
-            columns = ["chr", "start", "end", "query_alignment_sequence", "query_sequence"]
-        return columns
+    def toDF(self, result):
+        return toDataFrame(result, self.columns)
+
+    def get_col_names(self, result):
+        if self.columns is None:
+            self.columns = ["chr", "start", "end", "query_alignment_sequence", "query_sequence"]
+        return self.columns
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         try:
@@ -37,7 +40,7 @@ class SamFile(object):
             # if respType is "DataFrame":
             #     result = toDataFrame(result, self.columns)
 
-            (self.columns, result, _) = get_range_helper(self.get_bin, self.get_col_names, chr, start, end, iter, self.columns, respType)
+            (result, _) = get_range_helper(self.toDF, self.get_bin, self.get_col_names, chr, start, end, iter, self.columns, respType)
 
             return result, None
         except ValueError as e:
