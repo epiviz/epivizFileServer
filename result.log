@@ -1,0 +1,44 @@
+testing for range  10000
+original DF size
+1804
+time to compress to msgpack:  0.0005941390991210938 read from msgpack:  0.0009007453918457031
+msgpack size:  1194
+time to compress to json:  0.00036907196044921875 read from json:  0.0072078704833984375
+msgpack size:  1042
+ 
+time difference to compress:  0.000225067138671875 time difference to read:  -0.006307125091552734
+size difference:  152
+--------------------------
+testing for range  100000
+original DF size
+16764
+time to compress to msgpack:  0.0003871917724609375 read from msgpack:  0.000579833984375
+msgpack size:  6303
+time to compress to json:  0.00030684471130371094 read from json:  0.006522178649902344
+msgpack size:  10576
+ 
+time difference to compress:  8.034706115722656e-05 time difference to read:  -0.005942344665527344
+size difference:  -4273
+--------------------------
+testing for range  1000000
+original DF size
+166194
+time to compress to msgpack:  0.0012197494506835938 read from msgpack:  0.0009582042694091797
+msgpack size:  57289
+time to compress to json:  0.0013589859008789062 read from json:  0.008755922317504883
+msgpack size:  116306
+ 
+time difference to compress:  -0.0001392364501953125 time difference to read:  -0.007797718048095703
+size difference:  -59017
+--------------------------
+testing for range  10000000
+original DF size
+1660324
+time to compress to msgpack:  0.004498958587646484 read from msgpack:  0.003445863723754883
+msgpack size:  567055
+time to compress to json:  0.01000666618347168 read from json:  0.05669903755187988
+msgpack size:  1277552
+ 
+time difference to compress:  -0.005507707595825195 time difference to read:  -0.053253173828125
+size difference:  -710497
+--------------------------

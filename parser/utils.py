@@ -1,4 +1,5 @@
 import pandas
+import umsgpack
 
 def create_parser_object(format, source, columns=None):
     """
@@ -37,3 +38,6 @@ def create_parser_object(format, source, columns=None):
 def toDataFrame(records, header):
     input = pandas.DataFrame(records, columns=header)
     return input
+
+def toMsgpakc(msg):
+    return umsgpack.packb(msg)

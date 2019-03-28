@@ -9,5 +9,5 @@ def get_range_helper(toDF, get_bin, get_col_names, chr, start, end, file_iter, c
     columns = get_col_names(result[0])
 
     if respType is "DataFrame":
-        result = toDF(result)
+        result = toDataFrame(result, columns)
     return result, None

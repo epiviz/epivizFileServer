@@ -27,7 +27,6 @@ class GtfFile(SamFile):
         attr = list(filter(bool, attr))
 
         # THIS IS A DICTIONARY. GREAT DESIGN.
-        print(result)
         cols = [k for k,v in attr]
         data = {}
         # if (self.columns is None) or (len(self.columns) < (8+len(cols))):

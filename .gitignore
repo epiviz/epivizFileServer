@@ -12,4 +12,3 @@ bower_components/
 .ipynb_checkpoints/
 *.sqlite3
 *.ipynb
-test.py

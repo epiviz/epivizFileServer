@@ -1,5 +1,6 @@
 import pysam
 from .utils import toDataFrame
+from .Helper import get_range_helper
 
 class SamFile(object):
 
@@ -45,7 +46,3 @@ class SamFile(object):
             return result, None
         except ValueError as e:
             raise Exception("didn't find chromId with the given name")
-
-        
-
-
