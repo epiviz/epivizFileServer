@@ -2,7 +2,7 @@ import h5py
 from scipy.sparse import csc_matrix
 import numpy as np
 
-class HDF5(object):
+class HDF5File(object):
 
     def __init__(self, file):
         self.f = h5py.File(file, 'r')
