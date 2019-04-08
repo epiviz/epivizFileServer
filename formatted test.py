@@ -1,11 +1,13 @@
 file = "https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig"
 from parser import *
 import pysam
-import umsgpack
+import msgpack
 import sys
 import pandas as pd
-import random
 import time
+import json
+import random
+from server.utils import format_result
 # f = pysam.AlignmentFile(file, 'rb')
 
 # iter = f.pileup('CHROMOSOME_IV', 1, 1000)
@@ -27,29 +29,41 @@ import time
 #     endTemp = x.reference_pos+1
 #     # result.append((x.get_num_aligned(), x.reference_name, x.reference_pos))
 #     # print(x)
+
+params = {
+    "datasource" : "39033",
+    "metadata": None,
+    "measurement": ["39033"]
+}
+
 f = BigWig(file)
 for x in range(1,5):
     r = 10**(x+3)
     s = random.randint(1, 500)
     print("testing for range ", s, r)
     result, _ = f.getRange('chr1', s, r)
+    formatted_result = format_result(result, params)
+    # print(formatted_result)
+    print("size of formatted result")
+    print(sys.getsizeof(formatted_result))
+
     print("original DF size")
     print(sys.getsizeof(result))
     t1 = time.time()
-    ms = result.to_msgpack()
+    ms = msgpack.packb(formatted_result, use_bin_type=True)
     t1 = time.time() - t1
     t2 = time.time()
-    temp = pd.read_msgpack(ms)
+    temp = msgpack.unpackb(ms, raw=False)
     t2 = time.time() - t2
     print("time to compress to msgpack: ", t1, "read from msgpack: ", t2)
     print("msgpack size: ", sys.getsizeof(ms))
     mst1 = t1
     mst2 = t2
     t1 = time.time()
-    js = result.to_json()
+    js = json.dumps(formatted_result)
     t1 = time.time() - t1
     t2 = time.time()
-    temp = pd.read_json(js)
+    temp = json.loads(js)
     t2 = time.time() - t2
     print("time to compress to json: ", t1, "read from json: ", t2)
     print("msgpack size: ", sys.getsizeof(js))

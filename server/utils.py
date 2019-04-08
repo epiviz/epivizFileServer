@@ -27,7 +27,7 @@ def create_parser_object(format, source):
 
     return req_manager[format](source)
 
-async def format_result(input, params, offset=True):
+def format_result(input, params, offset=True):
 
     # measurement = params.get("measurement")[0]
     # input_json = []
