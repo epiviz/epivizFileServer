@@ -35,7 +35,7 @@ def create_parser_object(format, source, columns=None):
     
     return req_manager[format](source, columns)
 
-def toDataFrame(records, header):
+def toDataFrame(records, header = None):
     input = pandas.DataFrame(records, columns=header)
     return input
 

@@ -51,17 +51,8 @@ class GtfFile(SamFile):
             self.ensembl = ensembl
             self.columns = ["chr", "feature", "source", "start", "end", "score", "strand", "frame"]
             iter = self.file.fetch(chr, start, end)
-            # result = []
-            # for x in iter:
-            #     cols = (chr) + tuple(x.split('\t'))
-            #     result.append(cols)
 
-            # if self.columns is None: 
-            #     self.columns = ["chr", "feature", "source", "start", "end", "score", "strand", "frame", "attribute"]
-
-            # if respType is "DataFrame":
-            #     result = toDataFrame(result, self.columns)
-            (result, _) = get_range_helper(self.toDF, self.get_bin, self.get_col_names, chr, start, end, iter, self.columns, respType)
+            (result, _) = get_range_helper(self.toDF, self.get_bin, None, chr, start, end, iter, self.columns, respType)
             return result, None
         except ValueError as e:
             raise Exception("didn't find chromId with the given name")
