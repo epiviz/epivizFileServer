@@ -8,27 +8,6 @@ import time
 import json
 import random
 from server.utils import format_result
-# f = pysam.AlignmentFile(file, 'rb')
-
-# iter = f.pileup('CHROMOSOME_IV', 1, 1000)
-# # iter = f.fetch('c1', 0, 10000000)
-# # iter = f.pileup()
-# result = []
-# chrTemp = startTemp = endTemp = valueTemp = None
-# for x in iter:
-#     if valueTemp is None:
-#         chrTemp = x.reference_name
-#         startTemp = x.reference_pos
-#         valueTemp = x.get_num_aligned()
-#     elif valueTemp is not x.get_num_aligned():
-#         result.append((chrTemp, startTemp, endTemp, valueTemp))
-#         chrTemp = x.reference_name
-#         startTemp = x.reference_pos
-#         valueTemp = x.get_num_aligned()
-
-#     endTemp = x.reference_pos+1
-#     # result.append((x.get_num_aligned(), x.reference_name, x.reference_pos))
-#     # print(x)
 
 params = {
     "datasource" : "39033",

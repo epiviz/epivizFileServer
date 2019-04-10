@@ -13,3 +13,4 @@ bower_components/
 *.sqlite3
 *.ipynb
 temp_test.py
+msp.msg
