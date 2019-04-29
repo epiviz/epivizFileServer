@@ -1,7 +1,8 @@
 file = "https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig"
 from parser import *
 import pysam
-import msgpack
+# import msgpack
+import umsgpack
 import sys
 import pandas as pd
 import time
@@ -16,7 +17,7 @@ params = {
 }
 
 f = BigWig(file)
-for u in range(1,5):
+for u in range(5,6):
     for x in range(1,5):
         s = random.randint(1, 500)
         r = 10**(u+3) + s
@@ -30,10 +31,10 @@ for u in range(1,5):
         print("original DF size")
         print(sys.getsizeof(result))
         t1 = time.time()
-        ms = msgpack.packb(formatted_result, use_bin_type=True)
+        ms = umsgpack.packb(formatted_result)
         t1 = time.time() - t1
         t2 = time.time()
-        temp = msgpack.unpackb(ms, raw=False)
+        temp = umsgpack.unpackb(ms)
         t2 = time.time() - t2
         disk = str(10**(u+3)+x) + ".msg.testfile"
         with open(disk, 'wb') as wr:

@@ -10,7 +10,7 @@
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
 1
 --------------
@@ -26,55 +26,7 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
-Time to load and parse
-0
---------------
-{ rows:
-   { globalStartIndex: 0,
-     useOffset: true,
-     values:
-      { id: null,
-        chr: [Array],
-        strand: null,
-        metadata: [Object],
-        start: [Array],
-        end: [Array] } },
-  values: { globalStartIndex: 0, values: {} } }
-File size
-10000004
-Time to load and parse
-2
---------------
-{ rows:
-   { globalStartIndex: 0,
-     useOffset: true,
-     values:
-      { id: null,
-        chr: [Array],
-        strand: null,
-        metadata: [Object],
-        start: [Array],
-        end: [Array] } },
-  values: { globalStartIndex: 0, values: {} } }
-File size
-10000004
-Time to load and parse
-2
---------------
-{ rows:
-   { globalStartIndex: 0,
-     useOffset: true,
-     values:
-      { id: null,
-        chr: [Array],
-        strand: null,
-        metadata: [Object],
-        start: [Array],
-        end: [Array] } },
-  values: { globalStartIndex: 0, values: {} } }
-File size
-10000004
+100000004
 Time to load and parse
 1
 --------------
@@ -90,7 +42,7 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
 0
 --------------
@@ -106,9 +58,9 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-3
+1
 --------------
 { rows:
    { globalStartIndex: 0,
@@ -122,7 +74,23 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
+Time to load and parse
+1
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
 Time to load and parse
 0
 --------------
@@ -138,7 +106,7 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
 15
 --------------
@@ -154,7 +122,39 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
+Time to load and parse
+0
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
+Time to load and parse
+1
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
 Time to load and parse
 3
 --------------
@@ -170,7 +170,23 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
+Time to load and parse
+3
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
 Time to load and parse
 2
 --------------
@@ -186,9 +202,9 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-3
+15
 --------------
 { rows:
    { globalStartIndex: 0,
@@ -202,9 +218,9 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-17
+25
 --------------
 { rows:
    { globalStartIndex: 0,
@@ -218,9 +234,9 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-24
+12
 --------------
 { rows:
    { globalStartIndex: 0,
@@ -234,9 +250,9 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-20
+15
 --------------
 { rows:
    { globalStartIndex: 0,
@@ -250,7 +266,55 @@ Time to load and parse
         end: [Array] } },
   values: { globalStartIndex: 0, values: {} } }
 File size
-10000004
+100000004
 Time to load and parse
-19
+193
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
+Time to load and parse
+171
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
+Time to load and parse
+176
+--------------
+{ rows:
+   { globalStartIndex: 0,
+     useOffset: true,
+     values:
+      { id: null,
+        chr: [Array],
+        strand: null,
+        metadata: [Object],
+        start: [Array],
+        end: [Array] } },
+  values: { globalStartIndex: 0, values: {} } }
+File size
+100000004
+Time to load and parse
+165
 --------------

@@ -16,7 +16,7 @@ var msgpack = require("msgpack-lite");
 // myReader.readAsText(blob);
 // console.log(myReader)
 var request = require("request");
-for (var u = 1; u < 5; u++) {
+for (var u = 1; u < 6; u++) {
 	for (var x = 1; x < 5; x++) { 
 		var m = Math.pow(10, u+3) + x;
 		var requestSettings = {
