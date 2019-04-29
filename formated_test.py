@@ -35,6 +35,10 @@ for u in range(1,5):
         t2 = time.time()
         temp = msgpack.unpackb(ms, raw=False)
         t2 = time.time() - t2
+        disk = str(10**(u+3)+x) + ".msg.testfile"
+        with open(disk, 'wb') as wr:
+            wr.write(bytearray(ms))
+            wr.close()
         print("time to compress to msgpack: ", t1, "read from msgpack: ", t2)
         print("msgpack size: ", sys.getsizeof(ms))
         mst1 = t1
