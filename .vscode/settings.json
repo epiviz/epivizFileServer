@@ -1,0 +1,5 @@
+{
+    "python.pythonPath": "env/bin/python3.7",
+    "git.ignoreLimitWarning": true,
+    "restructuredtext.confPath": "${workspaceFolder}/docs"
+}
