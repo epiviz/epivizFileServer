@@ -35,9 +35,9 @@ Developer Notes
 This project has been set up using PyScaffold 3.1. For details and usage
 information on PyScaffold see https://pyscaffold.org/.
 
-1. Test - `python setup.py test`
-2. Docs - `python setup.py docs`
+1. Test - ```python setup.py test```
+2. Docs - ```python setup.py docs```
 3. Build
-    - source distribution  `python setup.py sdist`
-    - binary distribution  `python setup.py bdist`
-    - wheel  distribution  `python setup.py bdist_wheel`
+    - source distribution  ```python setup.py sdist```
+    - binary distribution  ```python setup.py bdist```
+    - wheel  distribution  ```python setup.py bdist_wheel```
