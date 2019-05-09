@@ -52,6 +52,7 @@ class GtfFile(SamFile):
             self.ensembl = ensembl
             self.columns = ["chr", "feature", "source", "start", "end", "score", "strand", "frame"]
             iter = self.file.fetch(chr, start, end)
+
             result, _ = get_range_helper(self.toDF, self.get_bin, None, chr, start, end, iter, self.columns, respType)
             print(result)
             return result, None
