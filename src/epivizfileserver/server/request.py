@@ -200,7 +200,7 @@ class DataRequest(EpivizRequest):
             print(result)
             print(err)
             # result = result.to_json(orient='records')
-            result = await utils.format_result(result, self.params)
+            result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
                 return result["rows"], None
             else:
