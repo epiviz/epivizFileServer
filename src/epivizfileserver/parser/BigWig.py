@@ -7,7 +7,15 @@ from .utils import toDataFrame
 
 class BigWig(BaseFile):
     """
-        File BigWig class
+    BigWig file parser
+    
+    Args: 
+        file (str): bigwig file location
+
+    Attributes:
+        tree: chromosome tree parsed from file
+        columns: column names
+        cacheData: locally cached data for this file
     """
     magic = "0x888FFC26"
 
@@ -26,10 +34,17 @@ class BigWig(BaseFile):
         (self.tree, self.endian, self.header, self.compressed, self.cacheData) = cache
 
     def get_autosql(self):
+        """parse autosql in file
+
+        Returns: 
+            an array of columns in file parsed from autosql
+        """
         allColumns = ["chr", "start", "end", "score"]
         return allColumns
 
     def getHeader(self):
+        """get header byte region in file
+        """
         data = self.get_bytes(0, 4)
         # parse magic code for byteswap
         if struct.unpack("I", data)[0] == int(self.__class__.magic, 0):
@@ -48,6 +63,11 @@ class BigWig(BaseFile):
             self.compressed = False 
 
     def parse_header(self):
+        """parse header in file
+
+        Returns: 
+            attributed stored in the header
+        """
         data = self.get_bytes(0, 56)
         (magic, version, zoomLevels, chromTreeOffset, fullDataOffset, fullIndexOffset,
             fieldCount, definedFieldCount) = struct.unpack(self.endian + "IHHQQQHH", data[:36])
@@ -60,6 +80,8 @@ class BigWig(BaseFile):
                 "uncompressBufSize" : uncompressBufSize}
 
     def daskWrapper(self, fileObj, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
+        """Dask Wrapper
+        """
         if hasattr(fileObj, 'zooms'):
             self.zooms = getattr(fileObj, "zooms")
         if hasattr(fileObj, 'chrmIds'):
@@ -72,6 +94,20 @@ class BigWig(BaseFile):
         return data
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
+        """Get data for a given genomic location
+
+        Args:
+            chr (str): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+            respType (str): result format type, default is "DataFrame
+
+        Returns:
+            result
+                a DataFrame with matched regions from the input genomic location if respType is DataFrame else result is an array
+            error 
+                if there was any error during the process
+        """
         if not hasattr(self, 'header'):
             self.sync = True
             self.getHeader()
@@ -104,6 +140,15 @@ class BigWig(BaseFile):
     # -2 for using fullDataOffset
     # -1 for auto zoom
     def getZoom(self, zoomlvl=-1, binSize = 2000):
+        """Get Zoom record for the given bin size
+
+        Args:
+            zoomlvl (int): zoomlvl to get
+            binSize (int): bin data by bin size
+
+        Returns: 
+            zoom level
+        """
         if not hasattr(self, 'zooms'):
             self.sync = True
             self.zooms = {}
@@ -152,6 +197,14 @@ class BigWig(BaseFile):
         return lvl, offset
 
     def getTree(self, zoomlvl):
+        """Get chromosome tree for a given zoom level
+
+        Args:
+            zoomlvl (int): zoomlvl to get
+
+        Returns: 
+            Tree binary bytes
+        """
         if zoomlvl == -2:
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
                 rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
@@ -162,6 +215,18 @@ class BigWig(BaseFile):
         raise Exception("get tree error: this should not have happened")
 
     def getValues(self, chr, start, end, zoomlvl):
+        """Get data for a region
+
+        Note: Do not use this directly, use getRange
+
+        Args:
+            chr (str): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+
+        Returns: 
+            data for the region
+        """
         # Add offset to ignore reading the RTree index header
         offset = 48
 
@@ -173,6 +238,14 @@ class BigWig(BaseFile):
         return values
 
     def getId(self, chrmzone):
+        """Get mapping of chromosome to id stored in file
+
+        Args:
+            chrmzone (str): chromosome 
+
+        Returns: 
+            id in file for the given chromosome
+        """
         if not hasattr(self, 'chrmIds'):
             self.sync = True
             self.chrmIds = {}
@@ -201,7 +274,18 @@ class BigWig(BaseFile):
         return self.chrmIds.get(chrmzone)
 
     def locateTree(self, chrmId, start, end, zoomlvl, offset):
+        """Locate tree for the given region
 
+        Args:
+            chrmId (int): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+            zoomlvl (int): zoom level
+            offset (int): offset position in the file
+
+        Returns: 
+            nodes in the stored R-tree
+        """
         result = []
         if start >= end: 
             return result
@@ -215,6 +299,14 @@ class BigWig(BaseFile):
         return result
 
     def readRtreeHeaderNode(self, zoomlvl):
+        """Parse an Rtree Header node
+
+        Args:
+            zoomlvl (int): zoom level
+
+        Returns: 
+            header node Rtree object
+        """
         data = self.tree.get(str(zoomlvl))[:52]
         (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase, 
             rEndFileOffset, rItemsPerSlot, _,
@@ -224,11 +316,22 @@ class BigWig(BaseFile):
                     "rEndChromIx": rEndChromIx, "rEndBase": rEndBase}
 
     def readRtreeNode(self, zoomlvl, offset):
+        """Parse an Rtree node
+
+        Args:
+            zoomlvl (int): zoom level
+            offset (int): offset in the file
+
+        Returns: 
+            node Rtree object
+        """
         data = self.tree.get(str(zoomlvl))[offset:offset + 4]
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return {"rIsLeaf": rIsLeaf, "rCount": rCount, "rOffset": offset + 4}
 
     def traverseRtreeNodes(self, node, zoomlvl, chrmId, start, end, result = []):
+        """Traverse an Rtree to get nodes in the given range
+        """
         offset = node.get("rOffset")
         if node.get("rIsLeaf"):
             for i in range(0, node.get("rCount")):
@@ -269,6 +372,8 @@ class BigWig(BaseFile):
         return result
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
+        """Parse an Rtree leaf node
+        """
         if self.cacheData.get(str(rdataOffset)):
             decom = self.cacheData.get(str(rdataOffset))
         else:

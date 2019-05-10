@@ -2,14 +2,14 @@ from ..parser import BigBed, BigWig, SamFile, TbxFile, BamFile
 
 def create_parser_object(format, source):
     """
-        Create appropriate File class based on file format
+    Create appropriate File class based on file format
 
-        Args:
-            format : Type of file
-            request : Other request parameters
+    Args:
+        format : Type of file
+        request : Other request parameters
 
-        Returns:
-            An instance of parser class
+    Returns:
+        An instance of parser class
     """  
 
     req_manager = {

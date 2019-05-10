@@ -5,7 +5,10 @@ import math
 
 class BigBed(BigWig):
     """
-        File BigBed class
+    Bed file parser
+    
+    Args: 
+        file (str): bigbed file location
     """
     magic = "0x8789F2EB"
     def __init__(self, file, columns=None):
@@ -17,6 +20,11 @@ class BigBed(BigWig):
     #         self.columns = self.get_autosql()
 
     def get_autosql(self):
+        """parse autosql stored in file
+
+        Returns: 
+            an array of columns in file parsed from autosql
+        """
         data = self.get_bytes(self.header.get("autoSqlOffset"), self.header.get("totalSummaryOffset") - self.header.get("autoSqlOffset")).decode('ascii')
         columns = []
         lines = data.split("\n")
@@ -33,6 +41,15 @@ class BigBed(BigWig):
     ## also figure out when using zoom rec is 
     ## appropriate for BigBed
     def getZoom(self, zoomlvl=-1, binSize = 2000):
+        """Get Zoom record for the given bin size
+
+        Args:
+            zoomlvl (int): zoomlvl to get
+            binSize (int): bin data by bin size
+
+        Returns: 
+            zoom level
+        """
         if not hasattr(self, 'zooms'):
             self.sync = True
             self.zooms = {}
@@ -57,6 +74,8 @@ class BigBed(BigWig):
         return lvl, offset
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
+        """Parse leaf node
+        """
         if self.cacheData.get(str(rdataOffset)):
             decom = self.cacheData.get(str(rdataOffset))
         else:

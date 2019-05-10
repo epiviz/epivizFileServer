@@ -1,6 +1,6 @@
-=========
-Epiviz File Parser and Server
-=========
+==================
+Epiviz File Server
+==================
 
 
 Compute and Query Parser for Genomic Files

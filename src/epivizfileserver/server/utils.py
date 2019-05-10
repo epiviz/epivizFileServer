@@ -4,14 +4,14 @@ import ujson
 
 def create_parser_object(format, source):
     """
-        Create appropriate File class based on file format
+    Create appropriate File class based on file format
 
-        Args:
-            format : Type of file
-            request : Other request parameters
+    Args:
+        format : Type of file
+        request : Other request parameters
 
-        Returns:
-            An instance of parser class
+    Returns:
+        An instance of parser class
     """  
 
     req_manager = {
@@ -28,7 +28,17 @@ def create_parser_object(format, source):
     return req_manager[format](source)
 
 def format_result(input, params, offset=True):
+    """
+    Fromat result to a epiviz compatible format
 
+    Args:
+        input : input dataframe
+        params : request parameters
+        offset: defaults to True
+
+    Returns:
+        formatted JSON response
+    """  
     # measurement = params.get("measurement")[0]
     # input_json = []
     # for item in input_data:
@@ -118,14 +128,14 @@ def format_result(input, params, offset=True):
 
 def bin_rows(input, max_rows=2000):
     """
-        Helper function to scale rows to resolution
+    Helper function to bin rows to resolution
 
-        Args:
-            input: dataframe to bin
-            max_rows: resolution to scale rows
+    Args:
+        input: dataframe to bin
+        max_rows: resolution to scale rows
 
-        Return:
-            data frame with scaled rows
+    Returns:
+        data frame with scaled rows
     """
 
     input_length = len(input)

@@ -2,15 +2,14 @@ import pandas
 import umsgpack
 
 def create_parser_object(format, source, columns=None):
-    """
-        Create appropriate File class based on file format
+    """Create appropriate File class based on file format
 
-        Args:
-            format : Type of file
-            request : Other request parameters
+    Args:
+        format (str): format of file
+        source (str): location of file
 
-        Returns:
-            An instance of parser class
+    Returns:
+        An instance of parser class
     """  
     from .BigBed import BigBed
     from .BigWig import BigWig
@@ -41,5 +40,5 @@ def toDataFrame(records, header = None):
     input = pandas.DataFrame(records, columns=header)
     return input
 
-def toMsgpakc(msg):
+def toMsgpack(msg):
     return umsgpack.packb(msg)

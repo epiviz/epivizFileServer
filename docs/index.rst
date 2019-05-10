@@ -1,26 +1,37 @@
-================
-epivizFileServer
-================
+================================================================================
+Epiviz File Server - Query & Transform Data from Indexed Genomic Files in Python
+================================================================================
 
-This is the documentation of **epivizFileServer**.
+Epiviz file Server is a scalable data query and compute system for 
+indexed genomic files. In addition to querying data, users can also 
+compute transformations, summarization and aggregation using 
+`NumPy <https://www.numpy.org/>`_ functions. 
+
+
+Since the genomic files are indexed, the library will only request and parse 
+necessary bytes from these files to process the request. We've also implemented a 
+cache system to efficiently manage already accessed bytes of a file. 
+We also use `dask <https://dask.org/>`_ to parallelize computing requests for 
+query and transformation. This allows us to scale our system to large 
+data repositories.
+
+`This blog post <https://epiviz.github.io/post/2019-02-04-epiviz-fileserver/>`_ 
+(Jupyter notebook) describes various features of the file server library 
+using genomic files hosted from the
+`NIH Roadmap Epigenomics project <http://www.roadmapepigenomics.org/>`_.
+
+The library provides various modules to  
+    - Parser: Read various genomic file formats, 
+    - Query: Access only necessary bytes of file for a given genomic location, 
+    - Compute:  Apply transformations on data, 
+    - Server:  Instantly convert the datasets into a REST API
+    - Visualization: Interactive Exploration of data using Epiviz.
 
 .. note::
 
-    This is the main page of your project's `Sphinx`_ documentation.
-    It is formatted in `reStructuredText`_. Add additional pages
-    by creating rst-files in ``docs`` and adding them to the `toctree`_ below.
-    Use then `references`_ in order to link them from this page, e.g.
-    :ref:`authors` and :ref:`changes`.
+    - The epiviz file server is an open source project on `GitHub <https://github.com/epiviz/epivizFileParser>`_
+    - Let us know what you think and any feedback to improve the library!
 
-    It is also possible to refer to the documentation of other Python packages
-    with the `Python domain syntax`_. By default you can reference the
-    documentation of `Sphinx`_, `Python`_, `NumPy`_, `SciPy`_, `matplotlib`_,
-    `Pandas`_, `Scikit-Learn`_. You can add more by extending the
-    ``intersphinx_mapping`` in your Sphinx's ``conf.py``.
-
-    The pretty useful extension `autodoc`_ is activated by default and lets
-    you include documentation from docstrings. Docstrings can be written in
-    `Google style`_ (recommended!), `NumPy style`_ and `classical style`_.
 
 
 Contents
@@ -29,6 +40,8 @@ Contents
 .. toctree::
    :maxdepth: 2
 
+   Installation <installation>
+   Tutorial <tutorial>
    License <license>
    Authors <authors>
    Changelog <changelog>
@@ -36,7 +49,7 @@ Contents
 
 
 Indices and tables
-==================
+================== 
 
 * :ref:`genindex`
 * :ref:`modindex`

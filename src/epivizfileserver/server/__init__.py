@@ -14,18 +14,35 @@ CORS(app)
 fileTime = 4
 MAXWORKER = 10
 
+"""
+The server module allows users to instantly create a REST API from the list of measuremensts.
+The API can then be used to interactive exploration of data or build various applications.
+"""
+
 def setup_app(measurementsManager):
+    """Setup the Sanic Rest API
+
+    Args: 
+        measurementsManager: a measurements manager object
+
+    Returns:
+        a sanic app object
+    """
     global app
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
     return app
 
 def create_fileHandler():
+    """create a dask file handler if one doesn't exist
+    """
     global app
     app.epivizFileHandler = None
     return app.epivizFileHandler
 
 async def schedulePickle():
+    """Sanic task to regularly pickle file objects from memory
+    """
     while True:
         await asyncio.sleep(fileTime)
         cleanQue = app.epivizFileHandler.cleanFileOBJ()
@@ -35,6 +52,8 @@ async def schedulePickle():
 
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
+    """Sanic callback for app setup before the server starts
+    """
     app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
     for rec in app.epivizMeasurementsManager.get_measurements():
         if rec.datasource == "files":
@@ -45,10 +64,13 @@ async def setup_connection(app, loop):
 @app.route("/", methods=["POST", "OPTIONS", "GET"])
 async def process_request(request):
     """
-        routes the request to the appropriate function based on the request `action` parameter.
+    Process am API request
 
-        Returns:
-            JSON result
+    Args: 
+        request: a sanic request object
+
+    Returns:
+        a JSON result
     """
 
     param_action = request.args.get("action")

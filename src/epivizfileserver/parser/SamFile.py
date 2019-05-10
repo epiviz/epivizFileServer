@@ -3,7 +3,19 @@ from .utils import toDataFrame
 from .Helper import get_range_helper
 
 class SamFile(object):
+    """
+    SAM File Class to parse sam files 
 
+    Args:
+        file (str): file location can be local (full path) or hosted publicly
+        columns ([str]) : column names for various columns in file
+    
+    Attributes:
+        file: a pysam file object
+        fileSrc: location of the file
+        cacheData: cache of accessed data in memory
+        columns: column names to use
+    """
     def __init__(self, file, columns=None):
         self.file = pysam.AlignmentFile(file, "r")
         self.fileSrc = file
@@ -28,6 +40,20 @@ class SamFile(object):
         return self.columns
 
     def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
+        """Get data for a given genomic location
+
+        Args:
+            chr (str): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+            respType (str): result format type, default is "DataFrame
+
+        Returns:
+            result
+                a DataFrame with matched regions from the input genomic location if respType is DataFrame else result is an array
+            error 
+                if there was any error during the process
+        """
         try:
             iter = self.file.fetch(chr, start, end)
             # result = []

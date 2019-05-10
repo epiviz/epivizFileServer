@@ -8,14 +8,14 @@ import asyncio
 
 def create_request(action, request):
     """
-        Create appropriate request class based on action
+    Create appropriate request class based on action
 
-        Args:
-            action : Type of request
-            request : Other request parameters
+    Args:
+        action : Type of request
+        request : Other request parameters
 
-        Returns:
-            An instance of EpivizRequest class
+    Returns:
+        An instance of EpivizRequest class
     """
 
     req_manager = {
@@ -31,7 +31,7 @@ def create_request(action, request):
 
 class EpivizRequest(object):
     """
-        Base class to process requests
+    Base class to process requests
     """
 
     def __init__(self, request):
@@ -41,26 +41,26 @@ class EpivizRequest(object):
 
     def validate_params(self, request):
         """
-            Validate parameters for requests
-            
-            Args:
-                request: dict of params from request
+        Validate parameters for requests
+        
+        Args:
+            request: dict of params from request
         """
         raise Exception("NotImplementedException")
 
     def get_data(self, mMgr):
         """
-            Get Data for this request type
+        Get Data for this request type
 
-            Returns:
-                result: JSON response for this request
-                error: HTTP ERROR CODE
+        Returns:
+            result: JSON response for this request
+            error: HTTP ERROR CODE
         """
         raise Exception("NotImplementedException")
 
 class SeqInfoRequest(EpivizRequest):
     """
-        SeqInfo requests class
+    SeqInfo requests class
     """
 
     def __init__(self, request):
@@ -80,7 +80,7 @@ class SeqInfoRequest(EpivizRequest):
 
 class MeasurementRequest(EpivizRequest):
     """
-        Measurement requests class
+    Measurement requests class
     """
     def __init__(self, request):
         super(MeasurementRequest, self).__init__(request)
@@ -132,7 +132,7 @@ class MeasurementRequest(EpivizRequest):
 
 class DataRequest(EpivizRequest):
     """
-        Data requests class
+    Data requests class
     """
     def __init__(self, request):
         super(DataRequest, self).__init__(request)

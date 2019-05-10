@@ -6,7 +6,10 @@ import ujson
 
 class MeasurementManager(object):
     """
-        Base class for measurements
+    Measurement manager class
+
+    Attributes:
+        measurements: list of all measurements managed by the system
     """
 
     def __init__(self):
@@ -14,6 +17,13 @@ class MeasurementManager(object):
         self.measurements = []
 
     def import_dbm(self, dbConn):
+        """Import measurements from a database.The database 
+        needs to have a `measurements_index` table with 
+        information of files imported into the database.
+
+        Args: 
+            dbConn: a database connection
+        """ 
         query = "select * from measurements_index"
         with dbConn.cursor() as cursor:
             cursor.execute(query)
@@ -36,6 +46,13 @@ class MeasurementManager(object):
             self.measurements.append(tempDbM)
 
     def import_files(self, fileSource, fileHandler=None):
+        """Import measurements from a file. 
+
+
+        Args: 
+            fileSource: location of the configuration file to load
+            fileHandler: an optional filehandler to use
+        """ 
         json_data = open(fileSource, "r")
         result = ujson.loads(json_data.read())
         measurements = []
@@ -56,6 +73,12 @@ class MeasurementManager(object):
         return(measurements)
 
     def import_ahub(self, ahub, handler=None):
+        """Import measurements from annotationHub objects. 
+
+        Args: 
+            ahub: list of file records from annotationHub
+            handler: an optional filehandler to use
+        """
         measurements = []
         for i, row in ahub.iterrows():
             if "EpigenomeRoadMapPreparer" in row["preparerclass"]:
@@ -66,10 +89,25 @@ class MeasurementManager(object):
         return measurements
 
     def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc):
+        """Add a Computed Measurement
+
+        Args: 
+            mtype: measurement type, defaults to 'computed'
+            mid: measurement id
+            name: name for this measurement
+            measurements: list of measurement to use 
+            computeFunc: `NumPy` function to apply
+
+        Returns:
+            a `ComputedMeasurement` object
+        """
+        
         tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc)
         self.measurements.append(tempComputeM)
         return tempComputeM
 
     def get_measurements(self):
+        """Get all available measurements
+        """
         return self.measurements
 
