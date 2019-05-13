@@ -5,14 +5,15 @@ Epiviz File Server - Query & Transform Data from Indexed Genomic Files in Python
 Epiviz file Server is a scalable data query and compute system for 
 indexed genomic files. In addition to querying data, users can also 
 compute transformations, summarization and aggregation using 
-`NumPy <https://www.numpy.org/>`_ functions. 
+`NumPy <https://www.numpy.org/>`_ functions directly on data queried from files. 
 
 
 Since the genomic files are indexed, the library will only request and parse 
-necessary bytes from these files to process the request. We've also implemented a 
-cache system to efficiently manage already accessed bytes of a file. 
+necessary bytes from these files to process the request (without loading the 
+entire file into memory). We implemented a cache system 
+to efficiently manage already accessed bytes of a file. 
 We also use `dask <https://dask.org/>`_ to parallelize computing requests for 
-query and transformation. This allows us to scale our system to large 
+query and transformation. This allows us to process and scale our system to large 
 data repositories.
 
 `This blog post <https://epiviz.github.io/post/2019-02-04-epiviz-fileserver/>`_ 
@@ -25,12 +26,12 @@ The library provides various modules to
     - Query: Access only necessary bytes of file for a given genomic location, 
     - Compute:  Apply transformations on data, 
     - Server:  Instantly convert the datasets into a REST API
-    - Visualization: Interactive Exploration of data using Epiviz.
+    - Visualization: Interactive Exploration of data using Epiviz (uses the Server module above).
 
 .. note::
 
-    - The epiviz file server is an open source project on `GitHub <https://github.com/epiviz/epivizFileParser>`_
-    - Let us know what you think and any feedback to improve the library!
+    - The Epiviz file Server is an open source project on `GitHub <https://github.com/epiviz/epivizFileParser>`_
+    - Let us know what you think and any feedback or feature requests to improve the library!
 
 
 
