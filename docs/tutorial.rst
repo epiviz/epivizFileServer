@@ -60,6 +60,7 @@ a `MeasurementManager` object which handles measurements from files and database
 We can then use the helper function `import_files` to import all measurements from this configuration file.
 
 .. code-block:: python
+
     mMgr = MeasurementManager()
     fmeasurements = mMgr.import_files(os.getcwd() + "/roadmap.json", mHandler)
     fmeasurements
@@ -71,6 +72,7 @@ After loading the measurements, we can query the object for data in a particular
 `get_data` function.
 
 .. code-block:: python
+
     result, err = await fmeasurements[1].get_data("chr11", 10550488, 11554489)
     result.head()
 
@@ -92,6 +94,7 @@ As an example to demonstrate, we can calculate the average ChIP-seq expression f
 
 
 .. code-block:: python
+
     computed_measurement = mMgr.add_computed_measurement("computed", "avg_ChIP_seq", "Average ChIP seq expression", 
                                             measurements=fmeasurements, computeFunc=numpy.mean)
 
@@ -99,6 +102,7 @@ As an example to demonstrate, we can calculate the average ChIP-seq expression f
 After defining a computed measurement, we can query this measurement for a genomic location.
 
 .. code-block:: python
+
     result, err = await computed_measurement.get_data("chr11", 10550488, 11554489)
     result.head()
 
@@ -111,6 +115,7 @@ into their workflows. We can quickly setup a REST API web
 server from the measurements we loaded -
 
 .. code-block:: python
+
     from epivizfileserver import setup_app
         app = setup_app(mMgr)
         app.run(port=8000)
@@ -128,12 +133,14 @@ Annotation Hub API is hosted at https://annotationhub.bioconductor.org/.
 We first download the annotationhub sqlite database for available data resources.
 
 .. code-block:: console
+
     wget http://annotationhub.bioconductor.org/metadata/annotationhub.sqlite3
 
 After download the resource database from AnnotatiobnHub, we can now load the 
 sqlite database into python and query for datasets.
 
 .. code-block:: python
+
     import pandas
     import os
     import sqlite3
@@ -153,6 +160,7 @@ For the purpose of the tutorial, we will filter for Sigmoid Colon ("E106") and E
 and the ChipSeq Data for "H3K27me3" histone marker files from the roadmap epigenomics project.
 
 .. code-block:: python
+
     roadmap = pd.query('dataprovider=="BroadInstitute" and genome=="hg19"')
     roadmap = roadmap.query('title.str.contains("H3K27me3") and (title.str.contains("E106") or title.str.contains("E079"))')
     # only use fc files
@@ -163,6 +171,7 @@ After filtering for resources we are interested in, we can load them into the fi
 `import_ahub` helper function.
 
 .. code-block:: python
+
     mMgr = MeasurementManager()
     ahub_measurements = mMgr.import_ahub(roadmap)
     ahub_measurements
