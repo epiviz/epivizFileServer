@@ -6,11 +6,11 @@ Installation
 Using PyPI
 =========
 
+To install the package from `PyPi <https://pypi.org/project/epivizFileServer/>`_,
+
 .. code-block:: console
 
     pip install epivizfileserver
-
-(package not yet available, please install from GitHub below)
 
 
 Development Version
