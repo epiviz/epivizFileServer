@@ -44,14 +44,14 @@ information on PyScaffold see https://pyscaffold.org/.
 use a virtualenv for testing & development. 
 To setup run the following commands from the project directory
 
-```
-virtualenv env --python=python3
-source env/bin/activate # (activate.fish if using the fish-shell)
-pip install -r requirements.txt
+.. code-block:: python
 
-# to deactivate virtualenv
-deactivate
-```
+    virtualenv env --python=python3
+    source env/bin/activate # (activate.fish if using the fish-shell)
+    pip install -r requirements.txt
+
+    # to deactivate virtualenv
+    deactivate
 
 1. Test - ```python setup.py test```
 2. Docs - ```python setup.py docs```
