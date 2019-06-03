@@ -1,0 +1,106 @@
+[
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E071-H3K27me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E071-H3K27me3",
+    "id": "E071-H3K27me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Hippocampus Middle",
+      "marker": "H3K27me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E070-H3K27me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E070-H3K27me3",
+    "id": "E070-H3K27me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Germinal Matrix",
+      "marker": "H3K27me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E079-H3K9me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E071-H3K9me3",
+    "id": "E071-H3K9me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Hippocampus Middle",
+      "marker": "H3K9me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E070-H3K9me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E070-H3K9me3",
+    "id": "E070-H3K9me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Germinal Matrix",
+      "marker": "H3K9me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E079-H3K36me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E071-H3K36me3",
+    "id": "E071-H3K36me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Hippocampus Middle",
+      "marker": "H3K36me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E070-H3K36me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E070-H3K36me3",
+    "id": "E070-H3K36me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Brain Germinal Matrix",
+      "marker": "H3K36me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E094-H3K27me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E094-H3K27me3",
+    "id": "E094-H3K27me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Gastric",
+      "marker": "H3K27me3"
+    },
+    "metadata": []
+  },
+  {
+    "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E109-H3K27me3.fc.signal.bigwig",
+    "file_type": "bigwig",
+    "datatype": "bp",
+    "name": "E109-H3K27me3",
+    "id": "E109-H3K27me3",
+    "annotation": {
+      "group": "digestive",
+      "tissue": "Small Intestine",
+      "marker": "H3K27me3"
+    },
+    "metadata": []
+  }
+]

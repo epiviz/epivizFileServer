@@ -79,7 +79,7 @@ class GtfFile(SamFile):
             iter = self.file.fetch(chr, start, end)
 
             result, _ = get_range_helper(self.toDF, self.get_bin, None, chr, start, end, iter, self.columns, respType)
-            print(result)
+            # print(result)
             return result, None
         except ValueError as e:
             raise Exception("didn't find chromId with the given name")
