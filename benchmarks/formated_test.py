@@ -8,7 +8,7 @@ import pandas as pd
 import time
 import json
 import random
-from server.utils import format_result
+from ../src/epivizfileserver/server.utils import format_result
 
 params = {
     "datasource" : "39033",
@@ -17,7 +17,7 @@ params = {
 }
 
 f = BigWig(file)
-for u in range(5,6):
+for u in range(1,6):
     for x in range(1,5):
         s = random.randint(1, 500)
         r = 10**(u+3) + s
