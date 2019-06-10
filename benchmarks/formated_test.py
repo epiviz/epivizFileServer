@@ -1,4 +1,4 @@
-file = "https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig"
+file = "./39033.bigwig"
 from parser import *
 import pysam
 # import msgpack
@@ -135,10 +135,10 @@ for u in range(1,6):
         t2 = time.time()
         temp = umsgpack.unpackb(ms)
         t2 = time.time() - t2
-        disk = str(10**(u+3)+x) + ".msg.testfile"
-        with open(disk, 'wb') as wr:
-            wr.write(bytearray(ms))
-            wr.close()
+        # disk = str(10**(u+3)+x) + ".msg.testfile"
+        # with open(disk, 'wb') as wr:
+        #     wr.write(bytearray(ms))
+        #     wr.close()
         print("time to compress to msgpack: ", t1, "read from msgpack: ", t2)
         print("msgpack size: ", sys.getsizeof(ms))
         mst1 = t1
