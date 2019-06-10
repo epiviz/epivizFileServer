@@ -80,12 +80,19 @@ async def process_request(request):
 
     epiviz_request = create_request(param_action, request.args)
     result, error = await epiviz_request.get_data(request.app.epivizMeasurementsManager)
-    return response.raw(umsgpack.packb({"requestId": int(param_id),
+    # return response.raw(umsgpack.packb({"requestId": int(param_id),
+    #                         "type": "response",
+    #                         "error": error,
+    #                         "data": result,
+    #                         "version": 5
+    #                     }),
+    #                 status=200)
+    return response.json({"requestId": int(param_id),
                             "type": "response",
                             "error": error,
                             "data": result,
                             "version": 5
-                        }),
+                        },
                     status=200)
 
 # @app.listener('before_server_stop')

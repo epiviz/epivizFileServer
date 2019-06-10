@@ -1,4 +1,4 @@
-file = "./39033.bigwig"
+file = "https://obj.umiacs.umd.edu/bigwig-files/39033.bigwig"
 from parser import *
 import pysam
 # import msgpack
