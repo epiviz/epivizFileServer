@@ -48,3 +48,11 @@ MANIFEST
 # Per-project virtualenvs
 .venv*/
 env/*
+
+*.lock
+*.dirlock
+usecases/roadmap/dask-worker-space/*.*
+.DS_Store
+parser/.DS_Store
+wrk/.DS_Store
+

@@ -8,7 +8,106 @@ import pandas as pd
 import time
 import json
 import random
-from server.utils import format_result
+
+def format_result(input, params, offset=True):
+    """
+    Fromat result to a epiviz compatible format
+
+    Args:
+        input : input dataframe
+        params : request parameters
+        offset: defaults to True
+
+    Returns:
+        formatted JSON response
+    """  
+    # measurement = params.get("measurement")[0]
+    # input_json = []
+    # for item in input_data:
+    #     input_json.append({"chr":item[0],  "start": item[1], "end": item[2], measurement: item[3]})
+    # input = pandas.read_json(ujson.dumps(input_json), orient="records")
+    # input = input.drop_duplicates()
+    input.start = input.start.astype("float")
+    input.end = input.end.astype("float")
+    # input[measurement] = input[measurement].astype("float")
+    # input["chr"] = params.get("seqName")
+
+    # input = bin_rows(input)
+    # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
+    globalStartIndex = None
+
+    data = {
+        "rows": {
+            "globalStartIndex": globalStartIndex,
+            "useOffset" : offset,
+            "values": {
+                "id": None,
+                "chr": [],
+                "strand": [],
+                "metadata": {}
+            }
+        },
+        "values": {
+            "globalStartIndex": globalStartIndex,
+            "values": {}
+        }
+    }
+
+    if len(input) > 0:
+        globalStartIndex = input["start"].values.min()
+        
+        if offset:
+            minStart = input["start"].iloc[0]
+            minEnd = input["end"].iloc[0]
+            input["start"] = input["start"].diff()
+            input["end"] = input["end"].diff()
+            input["start"].iloc[0] = minStart
+            input["end"].iloc[0] = minEnd
+
+        col_names = input.columns.values.tolist()
+        row_names = ["chr", "start", "end", "strand", "id"]
+
+        data = {
+            "rows": {
+                "globalStartIndex": globalStartIndex,
+                "useOffset" : offset,
+                "values": {
+                    "id": None,
+                    "chr": [],
+                    "strand": [],
+                    "metadata": {}
+                }
+            },
+            "values": {
+                "globalStartIndex": globalStartIndex,
+                "values": {}
+            }
+        }
+
+        for col in col_names:
+            if params.get("measurement") is not None and col in params.get("measurement"):
+                data["values"]["values"][col] = input[col].values.tolist()
+            elif col in row_names:
+                data["rows"]["values"][col] = input[col].values.tolist()
+            else:
+                data["rows"]["values"]["metadata"][col] = input[col].values.tolist()
+    else:
+        data["rows"]["values"]["start"] = []
+        data["rows"]["values"]["end"] = []
+
+        if params.get("metadata") is not None:
+            for met in params.get("metadata"):
+                data["rows"]["values"]["metadata"][met] = []
+        # else:
+        #     data["rows"]["values"]["metadata"] = None
+
+    data["rows"]["values"]["id"] = None
+
+    if params.get("datasource") != "genes":
+        data["rows"]["values"]["strand"] = None
+
+    return data
+
 
 params = {
     "datasource" : "39033",
@@ -17,7 +116,7 @@ params = {
 }
 
 f = BigWig(file)
-for u in range(5,6):
+for u in range(1,6):
     for x in range(1,5):
         s = random.randint(1, 500)
         r = 10**(u+3) + s
@@ -36,10 +135,10 @@ for u in range(5,6):
         t2 = time.time()
         temp = umsgpack.unpackb(ms)
         t2 = time.time() - t2
-        disk = str(10**(u+3)+x) + ".msg.testfile"
-        with open(disk, 'wb') as wr:
-            wr.write(bytearray(ms))
-            wr.close()
+        # disk = str(10**(u+3)+x) + ".msg.testfile"
+        # with open(disk, 'wb') as wr:
+        #     wr.write(bytearray(ms))
+        #     wr.close()
         print("time to compress to msgpack: ", t1, "read from msgpack: ", t2)
         print("msgpack size: ", sys.getsizeof(ms))
         mst1 = t1

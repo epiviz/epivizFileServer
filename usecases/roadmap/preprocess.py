@@ -21,4 +21,4 @@ roadmap.to_csv(os.getcwd() + "/roadmap_all.csv")
 rfile = open(os.getcwd() + "/roadmap.pickle", "wb")
 
 pickle.dump(roadmap, rfile)
-print(roadmap.shape)
+# print(roadmap.shape)
