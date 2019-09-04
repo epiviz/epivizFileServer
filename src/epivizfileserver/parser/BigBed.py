@@ -40,7 +40,7 @@ class BigBed(BigWig):
     ## for BigBeds, use the fullDataOffset
     ## also figure out when using zoom rec is 
     ## appropriate for BigBed
-    def getZoom(self, zoomlvl=-1, binSize = 2000):
+    def getZoom(self, zoomlvl, binSize):
         """Get Zoom record for the given bin size
 
         Args:

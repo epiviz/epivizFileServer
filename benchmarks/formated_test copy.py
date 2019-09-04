@@ -116,24 +116,27 @@ params = {
 }
 
 f = BigWig(file)
-for u in range(1,1):
-    for x in range(1,1):
+for u in range(4,5):
+    for x in range(1,2):
         s = random.randint(1, 500)
         r = 10**(u+3) + s
         print("testing for range ", s, r)
         result, _ = f.getRange('chr1', s, r)
-        formatted_result = format_result(result, params)
+        lis = result.values.tolist()
+        # formatted_result = format_result(result, params)
         # print(formatted_result)
-        print("size of formatted result")
-        print(sys.getsizeof(formatted_result))
-
+        # print("size of formatted result")
+        # print(sys.getsizeof(formatted_result))
+        # print(format_result)
         print("original DF size")
         print(sys.getsizeof(result))
         t1 = time.time()
-        ms = umsgpack.packb(formatted_result)
+        # ms = umsgpack.packb(formatted_result)
+        ms = umsgpack.packb(lis)
         t1 = time.time() - t1
         t2 = time.time()
         temp = umsgpack.unpackb(ms)
+        df = pd.DataFrame(temp, columns =['chr', 'start', 'end', 'score']) 
         t2 = time.time() - t2
         # disk = str(10**(u+3)+x) + ".msg.testfile"
         # with open(disk, 'wb') as wr:
@@ -144,16 +147,76 @@ for u in range(1,1):
         mst1 = t1
         mst2 = t2
         t1 = time.time()
-        js = json.dumps(formatted_result)
+        # js = json.dumps(formatted_result)
+        js = json.dumps(lis)
         t1 = time.time() - t1
         t2 = time.time()
         temp = json.loads(js)
+        df = pd.DataFrame(temp, columns =['chr', 'start', 'end', 'score']) 
         t2 = time.time() - t2
         print("time to compress to json: ", t1, "read from json: ", t2)
         print("msgpack size: ", sys.getsizeof(js))
+
+        import os
+        import sys
+        sys.path.append(os.path.join(os.path.dirname(__file__), '../python'))
+
+        import flatbuffers
+        import datas
+        import entry
+
+        ft1 = time.time()
+        te = time.time()
+        builder = flatbuffers.Builder(0)
+        bilder2 = flatbuffers.Builder(0)
+        arr = []
+        print(time.time() - te)
+        te = time.time()
+        for x in range(0, len(lis)):
+            string = builder.CreateString(lis[x][0])
+            entry.entryStart(builder)
+            entry.entryAddChr(builder, string)
+            entry.entryAddStart(builder, int(lis[x][1]))
+            entry.entryAddEnd(builder, int(lis[x][2]))
+            entry.entryAddValue(builder, lis[x][3])
+            ent1 = entry.entryEnd(builder)
+            arr.insert(0, ent1)
+
+        print(time.time() - te)
+        te = time.time()
+        datas.datasStartValueVector(builder, len(lis))
+        for x in range(0, len(lis)):
+            builder.PrependUOffsetTRelative(arr[x])   
+        valvec = builder.EndVector(len(lis))
+
+        print(time.time() - te)
+        te = time.time()
+        datas.datasStart(builder)
+        datas.datasAddValue(builder, valvec)
+        d = datas.datasEnd(builder)
+        builder.Finish(d)
+
+        print(time.time() - te)
+        te = time.time()
+        buf = builder.Output()
+
+        ft1 = time.time() - ft1
+        ft2 = time.time()
+        # print(buf)
+        d = datas.datas.GetRootAsdatas(buf, 0)
+        l = d.ValueLength()
+        # ent1 = d.Value(0)
+        arr = []
+        for x in range(0, l):
+            e = d.Value(x)
+            arr.append((e.Chr().decode('ascii'), e.Start(), e.End(), e.Value()))
+        df = pd.DataFrame(arr, columns =['chr', 'start', 'end', 'score']) 
+        ft2 = time.time() - ft2
+        print("time to compress to FlatBuffer: ", ft1, " time to read from Flatbuffer: ", ft2)
+        print("flatbuffer size: ", sys.getsizeof(buf))
         print(" ")
-        print("time difference to compress: ", mst1 - t1, "time difference to read: ", mst2 - t2)
-        print("size difference: ", sys.getsizeof(ms) - sys.getsizeof(js))
+        print("time difference to compress (mspk - js): ", mst1 - t1, "time difference to read: ", mst2 - t2)
+        print("time difference to compress (mspk - flat): ", mst1 - ft1, "time difference to read: ", mst2 - ft2)
         print("--------------------------")
     print("==========================")
 

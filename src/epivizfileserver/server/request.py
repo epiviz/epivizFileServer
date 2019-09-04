@@ -140,7 +140,7 @@ class DataRequest(EpivizRequest):
 
     def validate_params(self, request):
         params_keys = ["datasource", "seqName", "start", "end", "measurement"]
-        params = {}
+        params = {"start": 1}
 
         for key in params_keys:
             if key in request:
@@ -163,25 +163,19 @@ class DataRequest(EpivizRequest):
                     if "genes" in params.get("measurement"):
                         params["measurement"] = None
             else:
-                if key not in ["measurement", "measurements[]"]:
-                    raise Exception("missing params in request")
+                if key not in ["measurement", "measurements[]", "start"]:
+                # if key not in ["measurement"]:
+                    raise Exception("missing params in request", key)
         return params
 
     async def get_data(self, mMgr):
         measurements = mMgr.get_measurements()
         result = None
 
-        # print(self.params)
-        # print("Hello")
         try:
             for rec in measurements:
-                # print(rec.mid)
-                # print(rec)
                 if "getRows" in self.request.get("action"):
                     if rec.mid in self.params.get("datasource"):
-                        # print("matched")
-                        # print(rec.mid)
-                        # print(self.params)
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
                                     int(self.params.get("end"))
@@ -189,16 +183,12 @@ class DataRequest(EpivizRequest):
                         break
                 else:
                     if rec.mid in self.params.get("measurement"):
-                        # print(rec.mid)
-                        # print(rec)
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
                                     int(self.params.get("end"))
                                 )
                         break
 
-            # print(result)
-            # print(err)
             # result = result.to_json(orient='records')
             result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":

@@ -118,8 +118,7 @@ class BigWig(BaseFile):
         
         bins = (end - start) if bins > (end - start) else bins
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
-        zoomlvl, zoomOffset = self.getZoom(zoomlvl, bins)
-
+        zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
         if not self.tree.get(str(zoomlvl)):
             self.sync = True
             self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
@@ -139,7 +138,7 @@ class BigWig(BaseFile):
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset
     # -1 for auto zoom
-    def getZoom(self, zoomlvl=-1, binSize = 2000):
+    def getZoom(self, zoomlvl, binSize):
         """Get Zoom record for the given bin size
 
         Args:
