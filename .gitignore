@@ -51,8 +51,6 @@ env/*
 
 *.lock
 *.dirlock
-usecases/roadmap/dask-worker-space/*.*
-.DS_Store
-parser/.DS_Store
-wrk/.DS_Store
+*/dask-worker-space/*
+*/.DS_Store
 
