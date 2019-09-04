@@ -5,10 +5,10 @@
 SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
-BUILDDIR      = _build
+BUILDDIR      = ../build/sphinx/
 AUTODOCDIR    = api
 AUTODOCBUILD  = sphinx-apidoc
-PROJECT       = epivizFileServer
+PROJECT       = epivizfileserver
 MODULEDIR     = ../src/epivizfileserver
 
 # User-friendly check for sphinx-build

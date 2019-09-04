@@ -1,0 +1,25 @@
+name: epivizfileserver
+channels:
+  - default 
+  - bioconda
+  - conda-forge
+dependencies:
+  - pip
+  - dask
+  - distributed
+  - pandas
+  - requests
+  - sanic
+  - scikit-learn
+  - uvloop
+  - pysam
+  - h5py
+  - mkdocs
+  - scipy
+  - numpy
+  - pytest
+  - msgpack-python
+  - ujson
+  - pip:
+    - aiocache
+    - sanic-cors
