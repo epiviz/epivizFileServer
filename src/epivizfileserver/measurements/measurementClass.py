@@ -1,6 +1,11 @@
-import pandas as pd
 from ..handler import FileHandlerProcess
 import parser
+
+import pandas as pd
+import requests
+import numpy as np
+from random import randrange
+import umsgpack
 
 class Measurement(object):
     """
@@ -383,5 +388,68 @@ class ComputedMeasurement(Measurement):
                 # result[self.mid].astype('int64')
                 # result[self.mid] = result.apply(self.computeWrapper(self.computeFunc, columns), axis=1)
             return result, None
+        except Exception as e:
+            return {}, str(e)
+
+class WebServerMeasurement(Measurement):
+    """
+    Class representing a web server measurement
+
+    In addition to params from the base measurement class, source is now server API endpoint
+    """
+    def __init__(self, mtype, mid, name, source, datasource, datasourceGroup, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None):
+        super(WebServerMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue)
+        self.version = 5
+        self.datasourceGroup = datasourceGroup
+
+    def get_data(self, chr, start, end, bin=False, requestId=randrange(1000)):
+        """Get data for a genomic region from the API
+
+        Args: 
+            chr (str): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+            bin (bool): True to bin the results, defaults to False
+
+        Returns:
+            a dataframe with results
+        """
+
+        params = {
+            'requestId': requestId,
+            'version': self.version,
+            'action': 'getData',
+            'datasourceGroup': self.datasourceGroup,
+            'datasource': self.datasource,
+            'measurement': self.mid,
+            'seqName': chr,
+            'start': start,
+            'end': end
+        }
+
+        try:
+            result = requests.get(self.source, params=params)
+            res = umsgpack.unpackb(result.content)
+            data = res['data']
+
+            if data['rows']['useOffset']:
+                data['rows']['values']['start'] = np.cumsum(data['rows']['values']['start'])
+                data['rows']['values']['end'] = np.cumsum(data['rows']['values']['end'])
+
+            # convert json to dataframe
+            records = {}
+
+            for key in data['rows']['values'].keys():
+                if key not in ["id", "strand", "metadata"]:
+                    records[key] = data['rows']['values'][key]
+            
+            for key in data['rows']['values']['metadata'].keys():
+                records[key] = data['rows']['values']['metadata'][key]
+
+            for key in data['values']['values'].keys():
+                records[key] = data['values']['values'][key]
+            
+            dataF = pd.DataFrame(records)
+            return dataF, None
         except Exception as e:
             return {}, str(e)

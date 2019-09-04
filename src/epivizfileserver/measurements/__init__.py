@@ -1,2 +1,2 @@
-from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
+from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement, WebServerMeasurement
 from .measurementManager import MeasurementManager
