@@ -106,6 +106,25 @@ class MeasurementManager(object):
         self.measurements.append(tempComputeM)
         return tempComputeM
 
+
+    def add_genome(self, genome, fileHandler=None, url="http://obj.umiacs.umd.edu/genomes/"):
+        """Add a genome to the list of measurements. The genome has to be tabix indexed for the file server
+           to make remote queries. Our tabix indexed files are available at https://obj.umiacs.umd.edu/genomes/index.html
+
+        Args: 
+            genome: for example : hg19
+            url: url to the genome file
+        """
+        isGene = True
+        gurl = url + genome + "/" + genome + ".txt.gz"
+        tempGenomeM = FileMeasurement("tabix", genome, genome, 
+                        gurl, annotation=None,
+                        metadata=["GENEID", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                        isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                    )
+        self.measurements.append(tempGenomeM)
+        return(tempGenomeM)
+
     def get_measurements(self):
         """Get all available measurements
         """

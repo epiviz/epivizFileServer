@@ -23,8 +23,9 @@ class Measurement(object):
         isGenes: True if this measurement is an annotation (for example: reference genome hg19), defaults to False
         minValue: min value of all values, defaults to None
         maxValue: max value of all values, defaults to None
+        columns: column names for the file
     """
-    def __init__(self, mtype, mid, name, source, datasource, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None):
+    def __init__(self, mtype, mid, name, source, datasource, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
         self.mtype = mtype      # measurement_type (file/db)
         self.mid = mid          # measurement_id (column name in db/file)
         self.name = name        # measurement_name
@@ -36,6 +37,7 @@ class Measurement(object):
         self.isGenes = isGenes
         self.minValue = minValue
         self.maxValue = maxValue
+        self.columns = columns
 
     def get_data(self, chr, start, end):
         """
@@ -176,8 +178,8 @@ class DbMeasurement(Measurement):
     Attributes:
         connection: a database connection object
     """
-    def __init__(self, mtype, mid, name, source, datasource, dbConn, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None):
-        super(DbMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue)
+    def __init__(self, mtype, mid, name, source, datasource, dbConn, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
+        super(DbMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
         self.query_range = "select distinct %s from %s where chr=%s and end >= %s and start < %s order by chr, start"
         self.query_all = "select distinct %s from %s order by chr, start"
         self.connection = dbConn
@@ -261,10 +263,10 @@ class FileMeasurement(Measurement):
         fileHandler: an optional file handler object to process query requests (uses dask)
     """
 
-    def __init__(self, mtype, mid, name, source, datasource="files", annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None):
-        super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue)
+    def __init__(self, mtype, mid, name, source, datasource="files", annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None, columns=None):
+        super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
         self.fileHandler = fileHandler
-        self.columns = None
+        # self.columns = columns
         # ["chr", "start", "end"].append(mid)
 
     def create_parser_object(self, type, name, columns=None):
@@ -305,9 +307,12 @@ class FileMeasurement(Measurement):
             # rename columns from score to mid for BigWigs
             if self.mtype in ["BigWig", "bigwig", "bw"]:
                 result = result.rename(columns={'score': self.mid})
+            elif self.mtype in ['Tabix', 'tabix', 'tbx']:
+                result.columns = self.columns
 
-            if bin: 
+            if bin and not self.isGene: 
                 result = self.bin_rows(result, chr, start, end)
+
             return result, None
         except Exception as e:
             return {}, str(e)
@@ -323,8 +328,8 @@ class ComputedMeasurement(Measurement):
         source: defaults to 'computed'
         datasource: defaults to 'computed'
     """
-    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation=None, metadata=None, isComputed=True, isGenes=False):
-        super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes)
+    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation=None, metadata=None, isComputed=True, isGenes=False, columns=None):
+        super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, columns=columns)
         self.measurements = measurements
         self.computeFunc = computeFunc
 

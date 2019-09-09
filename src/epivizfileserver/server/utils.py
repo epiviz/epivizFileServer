@@ -121,8 +121,8 @@ def format_result(input, params, offset=True):
 
     data["rows"]["values"]["id"] = None
 
-    if params.get("datasource") != "genes":
-        data["rows"]["values"]["strand"] = None
+    # if params.get("datasource") != "genes":
+    #     data["rows"]["values"]["strand"] = None
 
     return data
 

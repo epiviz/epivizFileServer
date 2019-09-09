@@ -10,6 +10,9 @@ if __name__ == "__main__":
     # create file handler
     mHandler = create_fileHandler()
 
+    # add genome
+    genome = mMgr.add_genome("hg19")
+
     rfile = open(os.getcwd() + "/roadmap.pickle", "rb")
     roadmap = pickle.load(rfile)
 
