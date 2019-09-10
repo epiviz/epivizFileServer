@@ -61,6 +61,9 @@ async def setup_connection(app, loop):
             rec.fileHandler = app.epivizFileHandler
     print("FileHandler created")
     print('Server successfully started!')
+    # also create a folder caled cache
+    if not os.path.exists(os.getcwd() + "/cache"):
+        os.mkdir('cache')
 
 @app.route("/", methods=["POST", "OPTIONS", "GET"])
 async def process_request(request):
@@ -95,21 +98,22 @@ async def process_request(request):
     #                     },
     #                 status=200)
 
-# @app.listener('before_server_stop')
-# def clean_up(app, loop):
-#     folder = os.getcwd() + "/cache/"
-#     for the_file in os.listdir(folder):
-#         file_path = os.path.join(folder, the_file)
-#     try:
-#         if os.path.isfile(file_path):
-#             os.unlink(file_path)
-#         #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-#     except Exception as e:
-#         print(e)
-#     print("cache cleaned")
+@app.listener('before_server_stop')
+def clean_up(app, loop):
+    folder = os.getcwd() + "/cache/"
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+        #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+    except Exception as e:
+        print(e)
+    print("cache cleaned")
 
 # async def clean_tasks(app, loop):
 #     for task in asyncio.Task.all_tasks():
 #         task.cancel()
 
-# app.add_task(schedulePickle())
+
+app.add_task(schedulePickle())
