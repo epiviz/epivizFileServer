@@ -1,5 +1,5 @@
 from urllib.request import urlopen
-from ..measurements import MeasurementManager, FileMeasurement
+from ..measurements import FileMeasurement
 
 class TrackHub (object):
     """
@@ -13,7 +13,7 @@ class TrackHub (object):
     def __init__(self, file):
         self.file = file
         self.hub = self.parse_hub()
-        self.mMgr = MeasurementManager()
+        self.measurements = []
         self.genomes = self.parse_genome()
         self.parse_genomeTracks()
 
@@ -75,9 +75,18 @@ class TrackHub (object):
 
     def parse_genomeTracks(self):
         for genome in self.genomes:
-            self.mMgr.add_genome(genome["genome"])
+            url = "http://obj.umiacs.umd.edu/genomes/"
+            gurl = url + genome["genome"] + "/" + genome["genome"] + ".txt.gz"
+            tempGenomeM = FileMeasurement("tabix", genome["genome"], genome["genome"], 
+                        gurl, annotation=None,
+                        metadata=["GENEID", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                        isGenes=True, fileHandler=None, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                    )
+            self.measurements.append(tempGenomeM)
+            
             track_loc = self.file + "/" + genome["trackDb"]
             tracks = self.parse_trackDb(track_loc)
+
             genome["trackDbParsed"] = tracks
 
             for track in tracks:
@@ -87,7 +96,7 @@ class TrackHub (object):
                 
                 if track_type in [ "bigBed", "bigWig"]:
                     # epiviz hanldes bigbeds and bigwigs
-                    self.mMgr.measurements.append(FileMeasurement(
+                    self.measurements.append(FileMeasurement(
                         track_type, track["track"], track["shortLabel"], 
                         track["bigDataUrl"], annotation=None,
                         metadata=[], minValue=0, maxValue=5,
@@ -113,7 +122,7 @@ class TrackHub (object):
                     elif file_ext.lower() in ["tbi", "tbx", "tabix"]:
                         file_type = "tabix"
 
-                    self.mMgr.measurements.append(FileMeasurement(
+                    self.measurements.append(FileMeasurement(
                         file_type, track["track"], track["shortLabel"], 
                         track["bigDataUrl"], annotation=None,
                         metadata=[], minValue=0, maxValue=5,

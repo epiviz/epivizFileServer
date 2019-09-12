@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from epivizfileserver.measurements import MeasurementManager, FileMeasurement
-from epivizfileserver.server import create_fileHandler
 import sys
 import os
+
+from epivizfileserver.measurements import MeasurementManager, FileMeasurement
+from epivizfileserver.server import create_fileHandler
 
 __author__ = "Jayaram Kancherla"
 __copyright__ = "Jayaram Kancherla"

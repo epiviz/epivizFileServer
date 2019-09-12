@@ -141,7 +141,7 @@ class MeasurementManager(object):
         measurements = []
         trackhub = TrackHub(hub)
         if handler is not None:
-            for m in trackhub.mMgr.measuremts:
+            for m in trackhub.measurments:
                 m.fileHandler = fileHandler
                 measurements.append(m)
         self.measurements.append(measurements)

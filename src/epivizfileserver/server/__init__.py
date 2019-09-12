@@ -137,7 +137,7 @@ async def process_request(request):
 
     if type is "json":
         request.app.epivizMeasurementsManager.import_files(file, request.app.epivizFileHandler)
-    else if type is "hub":
+    elif type is "hub":
         request.app.epivizMeasurementsManager.import_trackhub(file, request.app.epivizFileHandler)
 
     return response.raw(umsgpack.packb({"requestId": int(param_id),
