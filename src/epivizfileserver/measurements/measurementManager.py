@@ -2,6 +2,7 @@ from aiocache import cached, SimpleMemoryCache
 from aiocache.serializers import JsonSerializer
 import pandas as pd
 from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
+from ..trackhub import TrackHub
 import ujson
 
 class MeasurementManager(object):
@@ -130,3 +131,18 @@ class MeasurementManager(object):
         """
         return self.measurements
 
+    def import_trackhub(self, hub, handler=None):
+        """Import measurements from annotationHub objects. 
+
+        Args: 
+            ahub: list of file records from annotationHub
+            handler: an optional filehandler to use
+        """
+        measurements = []
+        trackhub = TrackHub(hub)
+        if handler is not None:
+            for m in trackhub.mMgr.measuremts:
+                m.fileHandler = fileHandler
+                measurements.append(m)
+        self.measurements.append(measurements)
+        return measurements

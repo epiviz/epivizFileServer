@@ -65,6 +65,24 @@ async def setup_connection(app, loop):
     if not os.path.exists(os.getcwd() + "/cache"):
         os.mkdir('cache')
 
+@app.listener('before_server_stop')
+def clean_up(app, loop):
+    folder = os.getcwd() + "/cache/"
+    for the_file in os.listdir(folder):
+        file_path = os.path.join(folder, the_file)
+    try:
+        if os.path.isfile(file_path):
+            os.unlink(file_path)
+        #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+    except Exception as e:
+        print(e)
+    print("cache cleaned")
+
+# async def clean_tasks(app, loop):
+#     for task in asyncio.Task.all_tasks():
+#         task.cancel()
+app.add_task(schedulePickle())
+
 @app.route("/", methods=["POST", "OPTIONS", "GET"])
 async def process_request(request):
     """
@@ -98,22 +116,35 @@ async def process_request(request):
     #                     },
     #                 status=200)
 
-@app.listener('before_server_stop')
-def clean_up(app, loop):
-    folder = os.getcwd() + "/cache/"
-    for the_file in os.listdir(folder):
-        file_path = os.path.join(folder, the_file)
-    try:
-        if os.path.isfile(file_path):
-            os.unlink(file_path)
-        #elif os.path.isdir(file_path): shutil.rmtree(file_path)
-    except Exception as e:
-        print(e)
-    print("cache cleaned")
+@app.route("/addData", methods=["POST", "OPTIONS", "GET"])
+async def process_request(request):
+    """
+    API Endpoint to add new datasets to an instance
 
-# async def clean_tasks(app, loop):
-#     for task in asyncio.Task.all_tasks():
-#         task.cancel()
+    API Params:
+        file: location of the json or hub file
+        filetype: 'hub' if trackhub or 'json' if configuration file
 
+    Args: 
+        request: a sanic request object
 
-app.add_task(schedulePickle())
+    Returns:
+        success/fail after adding measurements
+    """
+
+    file = request.args.get("file")
+    type = request.args.get("filetype")
+
+    if type is "json":
+        request.app.epivizMeasurementsManager.import_files(file, request.app.epivizFileHandler)
+    else if type is "hub":
+        request.app.epivizMeasurementsManager.import_trackhub(file, request.app.epivizFileHandler)
+
+    return response.raw(umsgpack.packb({"requestId": int(param_id),
+                            "type": "response",
+                            "error": None,
+                            "data": True,
+                            "version": 5
+                        }),
+                    status=200)
+
