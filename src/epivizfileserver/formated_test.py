@@ -8,6 +8,7 @@ import pandas as pd
 import time
 import json
 import random
+import csv
 
 def format_result(input, params, offset=True):
     """
@@ -124,6 +125,8 @@ for u in range(1,6):
         result, _ = f.getRange('chr1', s, r)
         formatted_result = format_result(result, params)
         print(formatted_result)
+        with open(str(s) + " " + str(r) + '.csv', mode='w') as csv_file:
+            result.to_csv(csv_file)
        # print("size of formatted result")
        # print(sys.getsizeof(formatted_result))
 
@@ -144,7 +147,7 @@ for u in range(1,6):
         mst1 = t1
         mst2 = t2
         print(formatted_result)
-	t1 = time.time()
+        t1 = time.time()
         js = json.dumps(formatted_result)
         t1 = time.time() - t1
         t2 = time.time()
