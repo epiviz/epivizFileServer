@@ -207,7 +207,7 @@ class BigWig(BaseFile):
         if zoomlvl == -2:
             (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase,
                 rEndFileOffset, rItemsPerSlot, rReserved) = struct.unpack("IIQIIIIQII", self.get_bytes(self.header["fullIndexOffset"], 48))
-            return self.get_bytes(self.header["fullIndexOffset"], rEndFileOffset)
+            return self.get_bytes(self.header["fullIndexOffset"], self.zooms[0][1] - self.header["fullIndexOffset"])
         else:
             return self.get_bytes(self.zooms[zoomlvl][1], self.zooms[zoomlvl][3]) if self.zooms[zoomlvl][3] != -1 else self.get_bytes(self.zooms[zoomlvl][1], self.zooms[0][1] - self.header["fullIndexOffset"])
         
