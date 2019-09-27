@@ -89,7 +89,7 @@ class MeasurementManager(object):
                 measurements.append(tempFile)
         return measurements
 
-    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc):
+    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, annotation=None, metadata=None):
         """Add a Computed Measurement
 
         Args: 
@@ -103,7 +103,7 @@ class MeasurementManager(object):
             a `ComputedMeasurement` object
         """
         
-        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc)
+        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc, annotation=annotation, metadata=metadata)
         self.measurements.append(tempComputeM)
         return tempComputeM
 
@@ -117,9 +117,10 @@ class MeasurementManager(object):
             url: url to the genome file
         """
         isGene = True
+
         gurl = url + genome + "/" + genome + ".txt.gz"
         tempGenomeM = FileMeasurement("tabix", genome, genome, 
-                        gurl, annotation=None,
+                        gurl, annotation={"group": "genome"},
                         metadata=["GENEID", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                         isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                     )

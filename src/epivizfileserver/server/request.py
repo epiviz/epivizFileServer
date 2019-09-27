@@ -24,7 +24,8 @@ def create_request(action, request):
         "getData": DataRequest,
         "getCombined": DataRequest,
         "getRows": DataRequest,
-        "getValues": DataRequest
+        "getValues": DataRequest,
+        "search": SearchRequest
     }
 
     return req_manager[action](request)
@@ -195,5 +196,43 @@ class DataRequest(EpivizRequest):
                 return result["rows"], None
             else:
                 return result, None
+        except Exception as e:
+            return {}, str(e)
+
+class SearchRequest(EpivizRequest):
+    """
+    Search requests class
+    """
+    def __init__(self, request):
+        super(SearchRequest, self).__init__(request)
+        self.params = self.validate_params(request)
+
+    def validate_params(self, request):
+        params_keys = ["q", "maxResults"]
+        params = {}
+
+        for key in params_keys:
+            if key in request:
+                params[key] = request.get(key)
+            else:
+                raise Exception("missing params in request", key)
+
+        return params
+
+    async def get_data(self, mMgr):
+        
+        result = None
+
+        try:
+            genome = mMgr.genome[mMgr.genome['gene'].str.contains(self.params.get("q"), na=False, case=False)]
+            result = []
+
+            if len(genome) > 0:
+                print(len(genome))
+                for index, row in genome.iterrows():
+                    print(row)
+                    result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
+
+            return result, None
         except Exception as e:
             return {}, str(e)
