@@ -283,6 +283,7 @@ class FileMeasurement(Measurement):
         from parser.utils import create_parser_object as cpo
         return cpo(type, name, columns)
 
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
     async def get_data(self, chr, start, end, bin=False):
         """Get data for a genomic region from file
 
@@ -310,8 +311,13 @@ class FileMeasurement(Measurement):
             elif self.mtype in ['Tabix', 'tabix', 'tbx']:
                 result.columns = self.columns
 
-            if bin and not self.isGene: 
-                result = self.bin_rows(result, chr, start, end)
+            if bin and not self.isGenes: 
+                # json = ujson.dumps(result.to_json())
+                # print(type(json))
+                # result = self.bin_rows(result, chr, start, end)
+                result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
+                                columns=self.get_columns(), metadata=self.metadata)
+
 
             return result, None
         except Exception as e:
