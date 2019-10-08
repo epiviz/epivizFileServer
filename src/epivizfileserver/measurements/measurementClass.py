@@ -394,8 +394,7 @@ class ComputedMeasurement(Measurement):
         try:
             if self.computeFunc:
                 columns = self.get_columns()
-                result_copy = result.copy()
-                result_copy = result_copy[columns]
+                result_copy = result[columns]
                 result[self.mid] = result_copy.apply(self.computeFunc, axis=1)
                 result[self.mid] = result[self.mid].apply(float)
                 # result[self.mid].astype('int64')
