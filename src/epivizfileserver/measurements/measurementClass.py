@@ -328,10 +328,11 @@ class ComputedMeasurement(Measurement):
         source: defaults to 'computed'
         datasource: defaults to 'computed'
     """
-    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation=None, metadata=None, isComputed=True, isGenes=False, columns=None):
+    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation={"group": "computed"}, metadata=None, isComputed=True, isGenes=False, fileHandler=None, columns=None):
         super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, columns=columns)
         self.measurements = measurements
         self.computeFunc = computeFunc
+        self.fileHandler = fileHandler
 
     def get_columns(self):
         columns = []
@@ -359,6 +360,7 @@ class ComputedMeasurement(Measurement):
             return computeFunc(rowVals)
         return computeApply
 
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="computedgetdata")
     async def get_data(self, chr, start, end, dropna=True):
         """Get data for a genomic region from files and apply the `computeFunc` function 
 

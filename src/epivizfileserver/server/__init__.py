@@ -57,7 +57,7 @@ async def setup_connection(app, loop):
     """
     app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
     for rec in app.epivizMeasurementsManager.get_measurements():
-        if rec.datasource == "files":
+        if rec.datasource == "files" or rec.datasource == "computed":
             rec.fileHandler = app.epivizFileHandler
     print("FileHandler created")
     print('Server successfully started!')

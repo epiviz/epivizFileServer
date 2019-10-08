@@ -31,7 +31,8 @@ class BigBed(BigWig):
         for l in lines[3:len(lines)-2]:
             words = l.split(" ")
             words = list(filter(None, words))
-            columns.append(words[1][:-1])
+            if len(words) > 1:
+                columns.append(words[1])
         allColumns = ["chr", "start", "end"]
         allColumns.extend(columns[3:])
         return allColumns

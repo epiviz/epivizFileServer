@@ -4,11 +4,11 @@ import threading
 from .utils import create_parser_object
 import os
 from datetime import datetime, timedelta
-from aiocache import cached, SimpleMemoryCache
-from aiocache.serializers import JsonSerializer
 from dask.distributed import Client
-# clean up finished futures
-# grab proper result from those futures
+import ujson
+import pandas as pd
+from aiocache import cached, Cache
+from aiocache.serializers import JsonSerializer, PickleSerializer
 
 class FileHandlerProcess(object):
     """
@@ -104,6 +104,7 @@ class FileHandlerProcess(object):
         record["fileObj"] = None
 
     # @cached()
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlefile")
     async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
         """submit tasks to the dask client
 
@@ -123,3 +124,15 @@ class FileHandlerProcess(object):
         fileObj = await self.getRecord(fileName)
         data, _ = await fileObj.getRange(chr, start, end, points)
         return data,_
+
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
+    async def binFileData(self, fileName, data, chr, start, end, columns, metadata):
+        """submit tasks to the dask client
+        """
+        print("in bin data")
+        # print(fileName)
+        fileObj = await self.getRecord(fileName)
+        # print(fileObj)
+        print("binning")
+        data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata)
+        return data, err
