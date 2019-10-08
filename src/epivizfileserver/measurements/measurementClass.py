@@ -6,6 +6,8 @@ import requests
 import numpy as np
 from random import randrange
 import umsgpack
+from aiocache import cached, Cache
+from aiocache.serializers import JsonSerializer, PickleSerializer
 
 class Measurement(object):
     """
