@@ -351,17 +351,24 @@ class BigWig(BaseFile):
                 else: 
                     data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
+                # print(p, i, q)
+                # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
+                # print(chrmId, start, end)
+                # print(rStartChromIx, rEndChromIx, rStartChromIx != rEndChromIx)
                 if chrmId < rStartChromIx: 
-                    if not node.get("rIsLeaf"):
-                        break
+                    print("poi1")
+                    # if not node.get("rIsLeaf"):
+                    #     break
                     q = i
                     i = (i + p - 1) / 2
                     continue
                 if chrmId > rEndChromIx: 
+                    print("poi2")
                     p = i
                     i = (i + q - 1) / 2
                     continue
                 if rStartChromIx != rEndChromIx:
+                    print("poi3")
                     if chrmId == rStartChromIx:
                         if rStartBase >= start: 
                             p = i
@@ -369,10 +376,11 @@ class BigWig(BaseFile):
                             continue
                     elif chrmId == rEndChromIx:
                         if rEndBase <= start: 
-                            q = i
-                            i = (i + p - 1) / 2
+                            p = i
+                            i = (i + q - 1) / 2
                             continue
                 else:
+                    print("==")
                     if rStartBase >= start:
                         q = i
                         i = (i + p - 1) / 2
@@ -390,7 +398,10 @@ class BigWig(BaseFile):
                 else:
                     data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)    
-                if chrmId > rEndChromIx:
+                # print(i, node.get("rCount"))
+                # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
+                # print(chrmId, start, end)
+                if chrmId > rEndChromIx or chrmId < rStartChromIx:
                     break
                 if chrmId == rStartChromIx:
                     if rStartBase >= end:
