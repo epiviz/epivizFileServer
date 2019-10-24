@@ -310,7 +310,17 @@ class FileMeasurement(Measurement):
             # rename columns from score to mid for BigWigs
             if self.mtype in ["BigWig", "bigwig", "bw"]:
                 result = result.rename(columns={'score': self.mid})
-            elif self.mtype in ['Tabix', 'tabix', 'tbx']:
+            elif self.mtype in ['Tabix', 'tabix', 'tbx'] and not self.isGenes:
+                result.columns = self.columns
+                cols = ["chr", "start", "end"]
+
+                if self.metadata:
+                    cols.extend(self.metadata)
+                
+                cols.extend(self.mid)
+                result = result[cols]
+            if self.isGenes and self.mid is "mm10":
+                # print(self.columns)
                 result.columns = self.columns
 
             if bin and not self.isGenes: 
@@ -397,6 +407,8 @@ class ComputedMeasurement(Measurement):
             if self.computeFunc:
                 columns = self.get_columns()
                 result_copy = result[columns]
+                for c in columns:
+                    result_copy[c] = result[c].apply(float)
                 result[self.mid] = result_copy.apply(self.computeFunc, axis=1)
                 result[self.mid] = result[self.mid].apply(float)
                 # result[self.mid].astype('int64')

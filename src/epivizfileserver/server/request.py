@@ -176,7 +176,7 @@ class DataRequest(EpivizRequest):
         try:
             for rec in measurements:
                 if "getRows" in self.request.get("action"):
-                    if rec.mid in self.params.get("datasource"):
+                    if rec.mid == self.params.get("datasource"):
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
                                     int(self.params.get("end"))
