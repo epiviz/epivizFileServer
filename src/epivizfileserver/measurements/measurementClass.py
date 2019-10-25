@@ -479,24 +479,24 @@ class WebServerMeasurement(Measurement):
                 chr = data['values']['chr']
                 dataF = pd.DataFrame(list(zip(chr, start, end)), columns = ['chr', 'start', "end"]) 
             else:
-            if data['rows']['useOffset']:
-                data['rows']['values']['start'] = np.cumsum(data['rows']['values']['start'])
-                data['rows']['values']['end'] = np.cumsum(data['rows']['values']['end'])
+                if data['rows']['useOffset']:
+                    data['rows']['values']['start'] = np.cumsum(data['rows']['values']['start'])
+                    data['rows']['values']['end'] = np.cumsum(data['rows']['values']['end'])
 
-            # convert json to dataframe
-            records = {}
+                # convert json to dataframe
+                records = {}
 
-            for key in data['rows']['values'].keys():
-                if key not in ["id", "strand", "metadata"]:
-                    records[key] = data['rows']['values'][key]
-            
-            for key in data['rows']['values']['metadata'].keys():
-                records[key] = data['rows']['values']['metadata'][key]
+                for key in data['rows']['values'].keys():
+                    if key not in ["id", "strand", "metadata"]:
+                        records[key] = data['rows']['values'][key]
 
-            for key in data['values']['values'].keys():
-                records[key] = data['values']['values'][key]
-            
-            dataF = pd.DataFrame(records)
+                for key in data['rows']['values']['metadata'].keys():
+                    records[key] = data['rows']['values']['metadata'][key]
+
+                for key in data['values']['values'].keys():
+                    records[key] = data['values']['values'][key]
+
+                dataF = pd.DataFrame(records)
             return dataF, None
         except Exception as e:
             return {}, str(e)
