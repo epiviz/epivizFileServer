@@ -356,19 +356,16 @@ class BigWig(BaseFile):
                 # print(chrmId, start, end)
                 # print(rStartChromIx, rEndChromIx, rStartChromIx != rEndChromIx)
                 if chrmId < rStartChromIx: 
-                    print("poi1")
                     # if not node.get("rIsLeaf"):
                     #     break
                     q = i
                     i = (i + p - 1) / 2
                     continue
                 if chrmId > rEndChromIx: 
-                    print("poi2")
                     p = i
                     i = (i + q - 1) / 2
                     continue
                 if rStartChromIx != rEndChromIx:
-                    print("poi3")
                     if chrmId == rStartChromIx:
                         if rStartBase >= start: 
                             p = i
@@ -380,7 +377,6 @@ class BigWig(BaseFile):
                             i = (i + q - 1) / 2
                             continue
                 else:
-                    print("==")
                     if rStartBase >= start:
                         q = i
                         i = (i + p - 1) / 2
