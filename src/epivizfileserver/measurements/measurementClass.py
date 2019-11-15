@@ -454,28 +454,49 @@ class WebServerMeasurement(Measurement):
         }
 
         try:
+            if self.annotation["datatype"] == "peak":
+                params["action"] = "getRows"
+                del params["measurement"]
+                params["datasource"] = self.mid
+            
+            # req = requests.Request('GET', self.source, params=params)
+            # prep = req.prepare()
+            # print(prep.url)
+
             result = requests.get(self.source, params=params)
-            res = umsgpack.unpackb(result.content)
+            # res = umsgpack.unpackb(result.content)
+            res = result.json()
+            print(res)
+
             data = res['data']
+            dataF = None
 
-            if data['rows']['useOffset']:
-                data['rows']['values']['start'] = np.cumsum(data['rows']['values']['start'])
-                data['rows']['values']['end'] = np.cumsum(data['rows']['values']['end'])
+            if self.annotation["datatype"] == "peak":
+                start = np.cumsum(data['values']['start'])
+                start = start.astype(int)
+                end = np.cumsum(data['values']['end'])
+                end = end.astype(int)
+                chr = data['values']['chr']
+                dataF = pd.DataFrame(list(zip(chr, start, end)), columns = ['chr', 'start', "end"]) 
+            else:
+                if data['rows']['useOffset']:
+                    data['rows']['values']['start'] = np.cumsum(data['rows']['values']['start'])
+                    data['rows']['values']['end'] = np.cumsum(data['rows']['values']['end'])
 
-            # convert json to dataframe
-            records = {}
+                # convert json to dataframe
+                records = {}
 
-            for key in data['rows']['values'].keys():
-                if key not in ["id", "strand", "metadata"]:
-                    records[key] = data['rows']['values'][key]
-            
-            for key in data['rows']['values']['metadata'].keys():
-                records[key] = data['rows']['values']['metadata'][key]
+                for key in data['rows']['values'].keys():
+                    if key not in ["id", "strand", "metadata"]:
+                        records[key] = data['rows']['values'][key]
 
-            for key in data['values']['values'].keys():
-                records[key] = data['values']['values'][key]
-            
-            dataF = pd.DataFrame(records)
+                for key in data['rows']['values']['metadata'].keys():
+                    records[key] = data['rows']['values']['metadata'][key]
+
+                for key in data['values']['values'].keys():
+                    records[key] = data['values']['values'][key]
+
+                dataF = pd.DataFrame(records)
             return dataF, None
         except Exception as e:
             return {}, str(e)
