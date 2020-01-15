@@ -296,10 +296,12 @@ class BigWig(BaseFile):
         rootNode = self.readRtreeNode(zoomlvl, offset)
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
 
+        print(filtered_nodes)
         for node in filtered_nodes:
             result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
-
+        
         return result
+        # return filtered_nodes
 
     def readRtreeHeaderNode(self, zoomlvl):
         """Parse an Rtree Header node
@@ -340,6 +342,7 @@ class BigWig(BaseFile):
         q = node.get("rCount")
         i = (p + q) / 2
         flagi = -1
+        # print(node)
         if True:
             # search for the node that contains exactly the start range
             while i >= 0 and i < q and q > p and flagi != i:
@@ -368,9 +371,12 @@ class BigWig(BaseFile):
                 if rStartChromIx != rEndChromIx:
                     if chrmId == rStartChromIx:
                         if rStartBase >= start: 
-                            p = i
-                            i = (i + q - 1) / 2
+                            q = i
+                            i = (i + p - 1) / 2
                             continue
+                        # else:
+                        #     q = i
+                        #     i = (i + p - 1) / 2
                     elif chrmId == rEndChromIx:
                         if rEndBase <= start: 
                             p = i
@@ -404,6 +410,7 @@ class BigWig(BaseFile):
                         break
                 if node.get("rIsLeaf"):
                     result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
+                    # result.append((rStartBase, rEndBase, rdataOffset, rDataSize))
                 else:                  
                     diffOffset = self.header.get("fullIndexOffset")
                     if zoomlvl > -1:
