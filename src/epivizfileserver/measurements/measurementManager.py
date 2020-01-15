@@ -89,7 +89,7 @@ class MeasurementManager(object):
                 measurements.append(tempFile)
         return measurements
 
-    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, annotation=None, metadata=None):
+    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, annotation=None, metadata=None, computeAxis=1):
         """Add a Computed Measurement
 
         Args: 
@@ -103,7 +103,7 @@ class MeasurementManager(object):
             a `ComputedMeasurement` object
         """
         
-        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc, annotation=annotation, metadata=metadata)
+        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc, annotation=annotation, metadata=metadata, computeAxis=computeAxis)
         self.measurements.append(tempComputeM)
         return tempComputeM
 

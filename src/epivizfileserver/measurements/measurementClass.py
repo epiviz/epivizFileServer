@@ -268,7 +268,7 @@ class FileMeasurement(Measurement):
     def __init__(self, mtype, mid, name, source, datasource="files", annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None, columns=None):
         super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
         self.fileHandler = fileHandler
-        # self.columns = columns
+        self.columns = columns
         # ["chr", "start", "end"].append(mid)
 
     def create_parser_object(self, type, name, columns=None):
@@ -311,13 +311,9 @@ class FileMeasurement(Measurement):
             if self.mtype in ["BigWig", "bigwig", "bw"]:
                 result = result.rename(columns={'score': self.mid})
             elif self.mtype in ['Tabix', 'tabix', 'tbx'] and not self.isGenes:
-                result.columns = self.columns
+                result.columns = ["chr", "start", "end"].extend(self.columns)
                 cols = ["chr", "start", "end"]
-
-                if self.metadata:
-                    cols.extend(self.metadata)
-                
-                cols.extend(self.mid)
+                cols.append(self.mid)
                 result = result[cols]
             if self.isGenes and self.mid is "mm10":
                 # print(self.columns)
@@ -346,11 +342,12 @@ class ComputedMeasurement(Measurement):
         source: defaults to 'computed'
         datasource: defaults to 'computed'
     """
-    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation={"group": "computed"}, metadata=None, isComputed=True, isGenes=False, fileHandler=None, columns=None):
+    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation={"group": "computed"}, metadata=None, isComputed=True, isGenes=False, fileHandler=None, columns=None, computeAxis=1):
         super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, columns=columns)
         self.measurements = measurements
         self.computeFunc = computeFunc
         self.fileHandler = fileHandler
+        self.computeAxis = computeAxis
 
     def get_columns(self):
         columns = []
@@ -392,8 +389,12 @@ class ComputedMeasurement(Measurement):
             a dataframe with results
         """ 
         result = []
+        tbin = True
+        if len(self.measurements) == 1:
+            tbin = False
+
         for measurement in self.measurements:
-            mea_result, _ = await measurement.get_data(chr, start, end, bin=True)
+            mea_result, _ = await measurement.get_data(chr, start, end, bin=tbin)
             # result = [result, mea_result]
             result.append(mea_result)
 
@@ -409,7 +410,7 @@ class ComputedMeasurement(Measurement):
                 result_copy = result[columns]
                 for c in columns:
                     result_copy[c] = result[c].apply(float)
-                result[self.mid] = result_copy.apply(self.computeFunc, axis=1)
+                result[self.mid] = result_copy.apply(self.computeFunc, self.computeAxis)
                 result[self.mid] = result[self.mid].apply(float)
                 # result[self.mid].astype('int64')
                 # result[self.mid] = result.apply(self.computeWrapper(self.computeFunc, columns), axis=1)

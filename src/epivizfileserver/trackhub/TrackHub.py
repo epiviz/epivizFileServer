@@ -82,7 +82,7 @@ class TrackHub (object):
                         metadata=["GENEID", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                         isGenes=True, fileHandler=None, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                     )
-            self.measurements.append(tempGenomeM)
+            # self.measurements.append(tempGenomeM)
             
             track_loc = self.file + "/" + genome["trackDb"]
             tracks = self.parse_trackDb(track_loc)
@@ -90,44 +90,62 @@ class TrackHub (object):
             genome["trackDbParsed"] = tracks
 
             for track in tracks:
-                track_type = track["type"].split(" ")[0]
-                file_type = None
-                file_ext = None
-                
-                if track_type in [ "bigBed", "bigWig"]:
-                    # epiviz hanldes bigbeds and bigwigs
-                    self.measurements.append(FileMeasurement(
-                        track_type, track["track"], track["shortLabel"], 
-                        track["bigDataUrl"], annotation=None,
-                        metadata=[], minValue=0, maxValue=5,
-                        isGenes=False, fileHandler=None, columns=None)
-                    )
-                elif track_type in ["altGraphX", "bam", "bed", 
-                    "bed5FloatScore", "bedGraph", 
-                    "bedRnaElements", "bigBarChart",
-                    "bigInteract", "bigPsl", "bigChain", "bigMaf", 
-                    "broadPeak", "chain", "clonePos", "coloredExon", 
-                    "ctgPos", "downloadsOnly", "encodeFiveC", "expRatio", 
-                    "factorSource", "genePred", "gvf", "ld2", "narrowPeak", 
-                    "netAlign", "peptideMapping", "psl", "rmsk", "snake", 
-                    "vcfTabix", "wig", "wigMaf"]:
-                    # infer file type from the extension in the url
-                    file_ext = track["bigDataUrl"].split(".")
-                    file_ext = file_ext[len(file_ext)-1]
+                if "container" not in track:
+                    track_type = track["type"].split(" ")[0]
+                    file_type = None
+                    file_ext = None
                     
-                    if file_ext.lower() in ["bb", "bigbed"]:
-                        file_type = "bigBed"
-                    elif file_ext.lower() in ["bw", "bigwig"]:
-                        file_type = "bigWig"
-                    elif file_ext.lower() in ["tbi", "tbx", "tabix"]:
-                        file_type = "tabix"
+                    if track_type in [ "bigBed", "bigWig"]:
+                        isgene = False
+                        if track_type == "bigBed":
+                            isgene = True
+                        # epiviz hanldes bigbeds and bigwigs
+                        self.measurements.append(FileMeasurement(
+                            track_type, track["parent"] + "_" + track["track"], track["longLabel"], 
+                            track["bigDataUrl"], annotation=None,
+                            metadata=[], minValue=0, maxValue=5,
+                            isGenes=isgene, fileHandler=None, columns=None)
+                        )
+                    elif track_type in ["altGraphX", "bam", "bed", 
+                        "bed5FloatScore", "bedGraph", 
+                        "bedRnaElements", "bigBarChart",
+                        "bigInteract", "bigPsl", "bigChain", "bigMaf", 
+                        "broadPeak", "chain", "clonePos", "coloredExon", 
+                        "ctgPos", "downloadsOnly", "encodeFiveC", "expRatio", 
+                        "factorSource", "genePred", "gvf", "ld2", "narrowPeak", 
+                        "netAlign", "peptideMapping", "psl", "rmsk", "snake", 
+                        "vcfTabix", "wig", "wigMaf"]:
 
-                    self.measurements.append(FileMeasurement(
-                        file_type, track["track"], track["shortLabel"], 
-                        track["bigDataUrl"], annotation=None,
-                        metadata=[], minValue=0, maxValue=5,
-                        isGenes=False, fileHandler=None, columns=[])
-                    )
+                        # infer file type from the extension in the url
+                        file_ext = track["bigDataUrl"].split(".")
+                        file_ext = file_ext[len(file_ext)-1]
+                        file_columns = []
+                        
+                        if file_ext.lower() in ["bb", "bigbed"]:
+                            file_type = "bigBed"
+                            file_columns = track["barChartBars"].split(" ")
+
+                            print(file_columns)
+
+                            for fcol in file_columns:
+                                self.measurements.append(FileMeasurement(
+                                    file_type, fcol, track["shortLabel"] + "-" + fcol, 
+                                    track["bigDataUrl"], annotation=None,
+                                    metadata=[], minValue=0, maxValue=5,
+                                    isGenes=False, fileHandler=None, columns=file_columns)
+                                )
+
+                        elif file_ext.lower() in ["bw", "bigwig"]:
+                            file_type = "bigWig"
+                        elif file_ext.lower() in ["tbi", "tbx", "tabix"]:
+                            file_type = "tabix"
+
+                        self.measurements.append(FileMeasurement(
+                            file_type, track["track"], track["shortLabel"], 
+                            track["bigDataUrl"], annotation=None,
+                            metadata=[], minValue=0, maxValue=5,
+                            isGenes=False, fileHandler=None, columns=file_columns)
+                        )
 
     def parse_trackDb(self, track_loc):
         # required fields in the track file
