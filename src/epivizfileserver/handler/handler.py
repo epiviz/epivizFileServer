@@ -105,7 +105,7 @@ class FileHandlerProcess(object):
 
     # @cached()
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlefile")
-    async def handleFile(self, fileName, fileType, chr, start, end, points = 2000):
+    async def handleFile(self, fileName, fileType, chr, start, end, bins = 2000):
         """submit tasks to the dask client
 
         Args: 
@@ -122,11 +122,11 @@ class FileHandlerProcess(object):
             fileObj = await self.client.gather(fileFuture)
             self.setRecord(fileName, fileObj, fileType)
         fileObj = await self.getRecord(fileName)
-        data, _ = await fileObj.getRange(chr, start, end, points)
+        data, _ = await fileObj.getRange(chr, start, end, bins)
         return data,_
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
-    async def binFileData(self, fileName, data, chr, start, end, columns, metadata):
+    async def binFileData(self, fileName, data, chr, start, end, bins, columns, metadata):
         """submit tasks to the dask client
         """
         print("in bin data")
@@ -134,5 +134,5 @@ class FileHandlerProcess(object):
         fileObj = await self.getRecord(fileName)
         # print(fileObj)
         print("binning")
-        data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata)
+        data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
         return data, err

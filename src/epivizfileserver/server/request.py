@@ -179,17 +179,20 @@ class DataRequest(EpivizRequest):
                     if rec.mid == self.params.get("datasource"):
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
-                                    int(self.params.get("end"))
+                                    int(self.params.get("end")),
+                                    self.request.get("bins")
                                 )
                         break
                 else:
                     if rec.mid in self.params.get("measurement"):
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
-                                    int(self.params.get("end"))
+                                    int(self.params.get("end")),
+                                    int(self.request.get("bins"))
                                 )
                         break
-
+            
+            print(result.head())
             # result = result.to_json(orient='records')
             result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":

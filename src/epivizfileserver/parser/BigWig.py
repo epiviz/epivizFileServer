@@ -115,6 +115,9 @@ class BigWig(BaseFile):
             raise Exception("InputError: chromosome start > end")
         elif start is end:
             return []
+
+        if bins is None:
+            bins = 2000
         
         bins = (end - start) if bins > (end - start) else bins
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0

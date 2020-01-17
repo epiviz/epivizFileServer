@@ -97,18 +97,18 @@ class BaseFile(object):
 
             return resp.content[:size]
 
-    def bin_rows(self, data, chr, start, end, columns=None, metadata=None, length = 300):
+    def bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):
         """Bin genome by bin length and summarize the bin
         """
-        freq = round((end-start)/length)
-        if end - start < length:
+        freq = round((end-start)/bins)
+        if end - start < bins:
             freq = 1
 
         data = data.set_index(['start', 'end'])
         data.index = pd.IntervalIndex.from_tuples(data.index)
 
-        bins = pd.interval_range(start=start, end=end, freq=freq)
-        bins_df = pd.DataFrame(index=bins)
+        bins_range = pd.interval_range(start=start, end=end, freq=freq)
+        bins_df = pd.DataFrame(index=bins_range)
         bins_df["chr"] = chr
 
         if metadata:
@@ -121,8 +121,9 @@ class BaseFile(object):
         # map data to bins
         for index, row in bins_df.iterrows():
             temps = data[(data.index.left <= index.right) & (data.index.right > index.left)]
-            for col in columns:
-                row[col] = np.mean(temps[col].values)
+            if len(temps) > 0:
+                for col in columns:
+                    row[col] = float(np.mean(temps[col].values))
 
         bins_df["start"] = bins_df.index.left
         bins_df["end"] = bins_df.index.right

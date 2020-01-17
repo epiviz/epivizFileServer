@@ -118,7 +118,7 @@ class Measurement(object):
         columns.append(self.mid)
         return columns
 
-    def bin_rows(self, data, chr, start, end, length = 2000):
+    def bin_rows(self, data, chr, start, end, bins = 2000):
         """Bin genome by bin length and summarize the bin
 
         Args:
@@ -286,7 +286,7 @@ class FileMeasurement(Measurement):
         return cpo(type, name, columns)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
-    async def get_data(self, chr, start, end, bin=False):
+    async def get_data(self, chr, start, end, bins, bin=True):
         """Get data for a genomic region from file
 
         Args: 
@@ -304,7 +304,7 @@ class FileMeasurement(Measurement):
                 file = self.create_parser_object(self.mtype, self.source, self.columns)
                 result, _ = file.getRange(chr, start, end)
             else:
-                result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end)
+                result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end, bins=bins)
             # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
 
             # rename columns from score to mid for BigWigs
@@ -324,8 +324,7 @@ class FileMeasurement(Measurement):
                 # print(type(json))
                 # result = self.bin_rows(result, chr, start, end)
                 result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
-                                columns=self.get_columns(), metadata=self.metadata)
-
+                                bins, columns=self.get_columns(), metadata=self.metadata)
 
             return result, None
         except Exception as e:
@@ -376,7 +375,7 @@ class ComputedMeasurement(Measurement):
         return computeApply
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="computedgetdata")
-    async def get_data(self, chr, start, end, dropna=True):
+    async def get_data(self, chr, start, end, bins, dropna=True):
         """Get data for a genomic region from files and apply the `computeFunc` function 
 
         Args: 
@@ -394,7 +393,7 @@ class ComputedMeasurement(Measurement):
             tbin = False
 
         for measurement in self.measurements:
-            mea_result, _ = await measurement.get_data(chr, start, end, bin=tbin)
+            mea_result, _ = await measurement.get_data(chr, start, end, bins, bin=tbin)
             # result = [result, mea_result]
             result.append(mea_result)
 
