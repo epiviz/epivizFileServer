@@ -5,7 +5,7 @@ aiohttp==3.4.4
 dask==0.19.2
 distributed==1.23.2
 pandas==0.23.4
-requests==2.19.1
+requests==2.20.0
 sanic==0.7.0
 Sanic-Cors==0.9.4
 scikit-learn==0.19.2
