@@ -79,6 +79,24 @@ class BigWig(BaseFile):
                 "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
                 "uncompressBufSize" : uncompressBufSize}
 
+    def getZoomHeader(self):
+        self.zooms = {}
+        totalLevels = self.header.get("zoomLevels")
+        if totalLevels <= 0:
+            return -2, self.header.get("fullIndexOffset")
+        data = self.get_bytes(64, totalLevels * 24)
+        
+        for level in range(0, totalLevels):
+            ldata = data[level*24:(level + 1)*24]
+            (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
+            self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
+
+        # buffer placeholder for the last zoom level
+        self.zooms[totalLevels - 1].append(-1)
+        # set buffer size for other zoom levels
+        for level in range(0, totalLevels - 1):
+            self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
+
     def daskWrapper(self, fileObj, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "JSON"):
         """Dask Wrapper
         """
@@ -125,6 +143,12 @@ class BigWig(BaseFile):
         if not self.tree.get(str(zoomlvl)):
             self.sync = True
             self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
+
+        # if not self.tree.get(str(zoomlvl)):
+        #     self.sync = True
+        #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
+
+        # print("Zoom level", zoomlvl)
 
         values = self.getValues(chr, start, end, zoomlvl)
 
@@ -306,6 +330,15 @@ class BigWig(BaseFile):
         return result
         # return filtered_nodes
 
+    def getTreeBytes(self, zoomlvl, start, size):
+        zoomOffset = 0
+        if zoomlvl == -2:
+            zoomOffset = self.header["fullIndexOffset"]
+        else:
+            ZoomOffset = self.zooms[zoomlvl][1]
+
+        return(self.get_bytes(zoomOffset + start, size))
+
     def readRtreeHeaderNode(self, zoomlvl):
         """Parse an Rtree Header node
 
@@ -315,7 +348,8 @@ class BigWig(BaseFile):
         Returns: 
             header node Rtree object
         """
-        data = self.tree.get(str(zoomlvl))[:52]
+        # data = self.tree.get(str(zoomlvl))[:52]
+        data = self.getTreeBytes(zoomlvl, 0, 52)
         (rMagic, rBlockSize, rItemCount, rStartChromIx, rStartBase, rEndChromIx, rEndBase, 
             rEndFileOffset, rItemsPerSlot, _,
          rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "IIQIIIIQIIBBH", data)
@@ -333,7 +367,8 @@ class BigWig(BaseFile):
         Returns: 
             node Rtree object
         """
-        data = self.tree.get(str(zoomlvl))[offset:offset + 4]
+        # data = self.tree.get(str(zoomlvl))[offset:offset + 4]
+        data = self.getTreeBytes(zoomlvl, offset, 4)
         (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
         return {"rIsLeaf": rIsLeaf, "rCount": rCount, "rOffset": offset + 4}
 
@@ -352,10 +387,12 @@ class BigWig(BaseFile):
                 i = math.ceil(i)
                 flagi = i
                 if node.get("rIsLeaf"):
-                    data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                    # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                    data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
                 else: 
-                    data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                    # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                    data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
                 # print(p, i, q)
                 # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
@@ -398,10 +435,12 @@ class BigWig(BaseFile):
             i = math.ceil(i)
             while i < node.get("rCount"):
                 if node.get("rIsLeaf"):
-                    data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                    # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                    data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
                 else:
-                    data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                    # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                    data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
                     (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)    
                 # print(i, node.get("rCount"))
                 # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)

@@ -302,7 +302,7 @@ class FileMeasurement(Measurement):
         try:
             if self.fileHandler is None:
                 file = self.create_parser_object(self.mtype, self.source, self.columns)
-                result, _ = file.getRange(chr, start, end)
+                result, _ = file.getRange(chr, start, end, bins=bins)
             else:
                 result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end, bins=bins)
             # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
