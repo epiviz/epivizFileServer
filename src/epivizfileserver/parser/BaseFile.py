@@ -7,7 +7,7 @@ import zlib
 import ujson
 import pandas as pd
 import numpy as np
-import urllib.parse import urlparse
+from urllib.parse import urlparse
 import http
 
 class BaseFile(object):

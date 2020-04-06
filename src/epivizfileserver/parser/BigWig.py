@@ -141,8 +141,8 @@ class BigWig(BaseFile):
             error 
                 if there was any error during the process
         """
-        if treedisk is not None:
-            self.treedisk = treedisk
+        # if treedisk is not None:
+        self.treedisk = treedisk
 
         if not hasattr(self, 'header'):
             self.sync = True
