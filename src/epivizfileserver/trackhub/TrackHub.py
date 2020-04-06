@@ -21,7 +21,7 @@ class TrackHub (object):
         hub_loc = self.file + "/hub.txt"
         hub = {}
         hub_count = 0
-        # possible can be 
+        # fields can be
         # hub, shortLabel, longLabel,
         # genomesFile, email, descriptionUrl
         for line in urlopen(hub_loc):
@@ -125,7 +125,7 @@ class TrackHub (object):
                             file_type = "bigBed"
                             file_columns = track["barChartBars"].split(" ")
 
-                            print(file_columns)
+                            # print(file_columns)
 
                             for fcol in file_columns:
                                 self.measurements.append(FileMeasurement(

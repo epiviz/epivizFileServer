@@ -4,10 +4,11 @@
 
 import struct
 import zlib
-import requests
 import ujson
 import pandas as pd
 import numpy as np
+import urllib.parse import urlparse
+import http
 
 class BaseFile(object):
     """
@@ -32,6 +33,7 @@ class BaseFile(object):
         self.local = self.is_local(file)
         self.endian = "="
         self.compressed = True
+        self.conn = None
 
     def is_local(self, file):
         """Checks if file is local or hosted publicly
@@ -89,13 +91,13 @@ class BaseFile(object):
             return bin_value
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
-            resp = requests.get(self.file, headers=headers)
-            # resp = session.get(self.file, headers=headers).result()
-            # use requests.codes.ok instead
-            if resp.status_code != 206:
-                raise Exception("URLError")
-
-            return resp.content[:size]
+            if self.conn is None:
+                self.fuparse = urlparse(self.file)
+                self.conn = http.client.HTTPConnection(self.fuparse.netloc)
+            self.conn.request("GET", url=self.fuparse.path, headers=headers)
+            response = self.conn.getresponse()
+            resp = response.read()
+            return resp[:size]
 
     def bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):
         """Bin genome by bin length and summarize the bin

@@ -192,7 +192,6 @@ class DataRequest(EpivizRequest):
                                 )
                         break
             
-            print(result.head())
             # result = result.to_json(orient='records')
             result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
@@ -231,9 +230,9 @@ class SearchRequest(EpivizRequest):
             result = []
 
             if len(genome) > 0:
-                print(len(genome))
+                # print(len(genome))
                 for index, row in genome.iterrows():
-                    print(row)
+                    # print(row)
                     result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
             return result, None

@@ -1,14 +1,12 @@
 from sanic import Sanic, Blueprint, response
 from sanic.response import json
 from ..handler import FileHandlerProcess
-import asyncio
+# import asyncio
 import ujson
 from .request import create_request
-# from aiocache import caches, cached
 from sanic_cors import CORS, cross_origin
 import os
 import sys
-import umsgpack
 
 app = Sanic()
 CORS(app)
@@ -81,7 +79,7 @@ def clean_up(app, loop):
 # async def clean_tasks(app, loop):
 #     for task in asyncio.Task.all_tasks():
 #         task.cancel()
-app.add_task(schedulePickle())
+# app.add_task(schedulePickle())
 
 @app.route("/", methods=["POST", "OPTIONS", "GET"])
 async def process_request(request):
@@ -101,20 +99,20 @@ async def process_request(request):
 
     epiviz_request = create_request(param_action, request.args)
     result, error = await epiviz_request.get_data(request.app.epivizMeasurementsManager)
-    return response.raw(umsgpack.packb({"requestId": int(param_id),
-                            "type": "response",
-                            "error": error,
-                            "data": result,
-                            "version": 5
-                        }),
-                    status=200)
-    # return response.json({"requestId": int(param_id),
+    # return response.raw(umsgpack.packb({"requestId": int(param_id),
     #                         "type": "response",
     #                         "error": error,
     #                         "data": result,
     #                         "version": 5
-    #                     },
+    #                     }),
     #                 status=200)
+    return response.json({"requestId": int(param_id),
+                            "type": "response",
+                            "error": error,
+                            "data": result,
+                            "version": 5
+                        },
+                    status=200)
 
 @app.route("/addData", methods=["POST", "OPTIONS", "GET"])
 async def process_request(request):

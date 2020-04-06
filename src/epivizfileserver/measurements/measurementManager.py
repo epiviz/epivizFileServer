@@ -121,7 +121,7 @@ class MeasurementManager(object):
         gurl = url + genome + "/" + genome + ".txt.gz"
         tempGenomeM = FileMeasurement("tabix", genome, genome, 
                         gurl, annotation={"group": "genome"},
-                        metadata=["GENEID", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                        metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                         isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                     )
         self.measurements.append(tempGenomeM)

@@ -1,5 +1,5 @@
 import requests
-import umsgpack
+# import umsgpack
 import ujson
 
 from ..measurements import MeasurementManager, WebServerMeasurement
@@ -29,7 +29,8 @@ class EpivizClient(object):
         self.requestId += 1
         res = requests.get(self.server, params=params)
 
-        result = umsgpack.unpackb(res.content)
+        # result = umsgpack.unpackb(res.content)
+        result = res.content
         data = result['data']
         
         for i in range(len(data['id'])):
@@ -51,7 +52,8 @@ class EpivizClient(object):
 
         self.requestId += 1
         res = requests.get(self.server, params=params)
-        result = umsgpack.unpackb(res.content)
+        # result = umsgpack.unpackb(res.content)
+        result = res.content
         return result
 
     def get_data(self, measurement, chr, start, end):

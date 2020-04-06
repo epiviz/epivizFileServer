@@ -1,6 +1,6 @@
-from multiprocessing import Process, Manager, Lock
+# from multiprocessing import Process, Manager, Lock
 import pickle
-import threading
+# import threading
 from .utils import create_parser_object
 import os
 from datetime import datetime, timedelta
@@ -27,6 +27,7 @@ class FileHandlerProcess(object):
         self.client = Client(asynchronous=True)
         self.fileTime = fileTime
         self.IDcount = 0
+        self.cache = Cache(Cache.MEMORY, serializer=PickleSerializer())
         # self.futures = {}
     
 
@@ -103,7 +104,6 @@ class FileHandlerProcess(object):
         record["pickling"] = False
         record["fileObj"] = None
 
-    # @cached()
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlefile")
     async def handleFile(self, fileName, fileType, chr, start, end, bins = 2000):
         """submit tasks to the dask client
@@ -123,16 +123,12 @@ class FileHandlerProcess(object):
             self.setRecord(fileName, fileObj, fileType)
         fileObj = await self.getRecord(fileName)
         data, _ = await fileObj.getRange(chr, start, end, bins)
-        return data,_
+        return data, _
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
     async def binFileData(self, fileName, data, chr, start, end, bins, columns, metadata):
         """submit tasks to the dask client
         """
-        print("in bin data")
-        # print(fileName)
         fileObj = await self.getRecord(fileName)
-        # print(fileObj)
-        print("binning")
         data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
         return data, err

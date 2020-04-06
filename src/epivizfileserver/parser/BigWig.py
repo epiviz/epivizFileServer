@@ -24,6 +24,7 @@ class BigWig(BaseFile):
         self.tree = {}
         self.columns = columns
         self.getHeader()
+        # self.getZoomHeader()
         self.cacheData = {}
         self.sync = False
 
@@ -45,16 +46,27 @@ class BigWig(BaseFile):
     def getHeader(self):
         """get header byte region in file
         """
-        data = self.get_bytes(0, 4)
+        data = self.get_bytes(0, 64)
+
+        magicd = data[0:4]
         # parse magic code for byteswap
-        if struct.unpack("I", data)[0] == int(self.__class__.magic, 0):
+        if struct.unpack("I", magicd)[0] == int(self.__class__.magic, 0):
             self.endian = "="
-        elif struct.unpack("<I", data)[0] == int(self.__class__.magic, 0):
+        elif struct.unpack("<I", magicd)[0] == int(self.__class__.magic, 0):
             self.endian = "<"
         else:
             raise Exception("BadFileError")
 
-        self.header = self.parse_header()
+        self.header = self.parse_header(data[0:56])
+
+        # self.headerExtra = self.get_bytes(64, (self.header.zoomLevels * 64) + )
+        data = self.get_bytes(64, self.header.get("fullDataOffset") - 64)
+
+        self.zoomBin = data[0:self.header.get("zoomLevels") * 24]
+        # self.getZoom(3, 1)
+
+        self.chromTreeBin = data[len(data) - (self.header.get("fullDataOffset") - self.header.get("chromTreeOffset")):]
+        # self.getId("chr11")
 
         if self.columns is None:
             self.columns = self.get_autosql()
@@ -62,13 +74,14 @@ class BigWig(BaseFile):
         if self.header.get("uncompressBufSize") == 0:
             self.compressed = False 
 
-    def parse_header(self):
+    def parse_header(self, data=None):
         """parse header in file
 
         Returns: 
             attributed stored in the header
         """
-        data = self.get_bytes(0, 56)
+        if data is None:
+            data = self.get_bytes(0, 56)
         (magic, version, zoomLevels, chromTreeOffset, fullDataOffset, fullIndexOffset,
             fieldCount, definedFieldCount) = struct.unpack(self.endian + "IHHQQQHH", data[:36])
 
@@ -79,12 +92,14 @@ class BigWig(BaseFile):
                 "definedFieldCount" : definedFieldCount, "autoSqlOffset" : autoSqlOffset, "totalSummaryOffset" : totalSummaryOffset, 
                 "uncompressBufSize" : uncompressBufSize}
 
-    def getZoomHeader(self):
+    def getZoomHeader(self, data):
         self.zooms = {}
         totalLevels = self.header.get("zoomLevels")
         if totalLevels <= 0:
             return -2, self.header.get("fullIndexOffset")
-        data = self.get_bytes(64, totalLevels * 24)
+
+        if data is None:
+            data = self.get_bytes(64, totalLevels * 24)
         
         for level in range(0, totalLevels):
             ldata = data[level*24:(level + 1)*24]
@@ -111,7 +126,7 @@ class BigWig(BaseFile):
         data = self.getRange(chr, start, end, bins, zoomlvl, metric, respType)
         return data
 
-    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
+    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame", treedisk=None):
         """Get data for a given genomic location
 
         Args:
@@ -126,6 +141,9 @@ class BigWig(BaseFile):
             error 
                 if there was any error during the process
         """
+        if treedisk is not None:
+            self.treedisk = treedisk
+
         if not hasattr(self, 'header'):
             self.sync = True
             self.getHeader()
@@ -139,20 +157,19 @@ class BigWig(BaseFile):
         
         bins = (end - start) if bins > (end - start) else bins
         # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
-        zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
-        if not self.tree.get(str(zoomlvl)):
-            self.sync = True
-            self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
+        if zoomlvl != -2:
+            zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
+        else:
+            self.zooms = {}
+            zoomOffset = self.header.get("fullIndexOffset")
 
         # if not self.tree.get(str(zoomlvl)):
         #     self.sync = True
         #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
 
-        # print("Zoom level", zoomlvl)
-
         values = self.getValues(chr, start, end, zoomlvl)
 
-        result = values
+        # result = values
         if respType is "DataFrame":
             result = toDataFrame(values, self.columns)
             # replace chrmId with chr
@@ -181,7 +198,10 @@ class BigWig(BaseFile):
             totalLevels = self.header.get("zoomLevels")
             if totalLevels <= 0:
                 return -2, self.header.get("fullIndexOffset")
-            data = self.get_bytes(64, totalLevels * 24)
+
+            data = self.zoomBin
+            # if data is None:
+            #     data = self.get_bytes(64, totalLevels * 24)
             
             for level in range(0, totalLevels):
                 ldata = data[level*24:(level + 1)*24]
@@ -279,13 +299,16 @@ class BigWig(BaseFile):
         if not hasattr(self, 'chrmIds'):
             self.sync = True
             self.chrmIds = {}
-            chromosomeTreeOffset = self.header.get("chromTreeOffset")
-            data = self.get_bytes(chromosomeTreeOffset, 36)
+            # chromosomeTreeOffset = self.header.get("chromTreeOffset")
+            # chromosomeTreeLength = self.header.get("fullDataOffset") - self.header.get("chromTreeOffset")
+            # data = self.get_bytes(chromosomeTreeOffset, chromosomeTreeLength)
+            data = self.chromTreeBin
 
-            (treeMagic, blockSize, keySize, valSize, itemCount, treeReserved, isLeaf, nodeReserved, count) = struct.unpack(self.endian + "IIIIQQBBH", data)
+            (treeMagic, blockSize, keySize, valSize, itemCount, treeReserved, isLeaf, nodeReserved, count) = struct.unpack(self.endian + "IIIIQQBBH", data[0:36])
             chrmId = -1
 
-            data = self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
+            # data = self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
+            data = data[36:]
 
             for y in range(0, count):
                 key = ""
@@ -323,7 +346,6 @@ class BigWig(BaseFile):
         rootNode = self.readRtreeNode(zoomlvl, offset)
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
 
-        print(filtered_nodes)
         for node in filtered_nodes:
             result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
         
@@ -331,6 +353,16 @@ class BigWig(BaseFile):
         # return filtered_nodes
 
     def getTreeBytes(self, zoomlvl, start, size):
+
+        if self.treedisk is not None:
+            f = open(self.treedisk, "rb")
+            zoomOffset = self.header["fullIndexOffset"]
+            f.seek(start)
+            return(f.read(size))
+
+        if self.tree.get(str(zoomlvl)) is not None:
+            return(self.tree.get(str(zoomlvl))[start:start+size])
+
         zoomOffset = 0
         if zoomlvl == -2:
             zoomOffset = self.header["fullIndexOffset"]
@@ -376,113 +408,261 @@ class BigWig(BaseFile):
         """Traverse an Rtree to get nodes in the given range
         """
         offset = node.get("rOffset")
-        p = 0
-        q = node.get("rCount")
-        i = (p + q) / 2
-        flagi = -1
-        # print(node)
-        if True:
-            # search for the node that contains exactly the start range
-            while i >= 0 and i < q and q > p and flagi != i:
-                i = math.ceil(i)
-                flagi = i
-                if node.get("rIsLeaf"):
-                    # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
-                    data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
-                    (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
-                else: 
-                    # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
-                    data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
-                    (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
-                # print(p, i, q)
-                # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
-                # print(chrmId, start, end)
-                # print(rStartChromIx, rEndChromIx, rStartChromIx != rEndChromIx)
-                if chrmId < rStartChromIx: 
-                    # if not node.get("rIsLeaf"):
-                    #     break
-                    q = i
-                    i = (i + p - 1) / 2
-                    continue
-                if chrmId > rEndChromIx: 
-                    p = i
-                    i = (i + q - 1) / 2
-                    continue
+
+        if self.cacheData.get(str(offset)):
+            tree = self.cacheData.get(str(offset))
+        else:
+            if node.get("rIsLeaf"):
+                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
+            else:
+                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
+            self.cacheData[str(offset)] = tree
+
+        if node.get("rIsLeaf"):
+            for i in range(0, node.get("rCount")):
+                data = tree[(i * 32) : ((i+1) * 32)]
+                # data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
+                # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+                if chrmId < rStartChromIx: break
+                if chrmId < rStartChromIx or chrmId > rEndChromIx: continue
+                
                 if rStartChromIx != rEndChromIx:
                     if chrmId == rStartChromIx:
-                        if rStartBase >= start: 
-                            q = i
-                            i = (i + p - 1) / 2
-                            continue
-                        # else:
-                        #     q = i
-                        #     i = (i + p - 1) / 2
+                        if rStartBase >= end: continue
                     elif chrmId == rEndChromIx:
-                        if rEndBase <= start: 
-                            p = i
-                            i = (i + q - 1) / 2
-                            continue
+                        if rEndBase <= start: continue
                 else:
-                    if rStartBase >= start:
-                        q = i
-                        i = (i + p - 1) / 2
-                        continue
-                    if rEndBase <= start: 
-                        p = i
-                        i = (i + q - 1) / 2
-                        continue
-                break
-            i = math.ceil(i)
-            while i < node.get("rCount"):
-                if node.get("rIsLeaf"):
-                    # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
-                    data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
-                    (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+                    if rStartBase >= end or rEndBase <= start: continue
+                result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
+        else:
+            for i in range(0, node.get("rCount")):
+                data = tree[(i * 24) : ((i+1) * 24)]
+                # data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
+                # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
+                if chrmId < rStartChromIx: break
+                if not (chrmId >= rStartChromIx and chrmId <= rEndChromIx): continue
+                if rStartChromIx != rEndChromIx:
+                    if chrmId == rStartChromIx:
+                        if rStartBase >=end: continue
+                    elif chrmId == rEndChromIx:
+                        if rEndBase <= start: continue
                 else:
-                    # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
-                    data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
-                    (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)    
-                # print(i, node.get("rCount"))
-                # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
-                # print(chrmId, start, end)
-                if chrmId > rEndChromIx or chrmId < rStartChromIx:
-                    break
-                if chrmId == rStartChromIx:
-                    if rStartBase >= end:
-                        break
-                if node.get("rIsLeaf"):
-                    result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
-                    # result.append((rStartBase, rEndBase, rdataOffset, rDataSize))
-                else:                  
-                    diffOffset = self.header.get("fullIndexOffset")
-                    if zoomlvl > -1:
-                        diffOffset = self.zooms[zoomlvl][1]
-                    
-                    childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
-                    self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
-                i +=1
-        # else:
-        #     for i in range(0, node.get("rCount")):
-        #         data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
-        #         (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
-        #         if chrmId < rStartChromIx: break
-        #         if not (chrmId >= rStartChromIx and chrmId <= rEndChromIx): continue
-        #         if rStartChromIx != rEndChromIx:
-        #             if chrmId == rStartChromIx:
-        #                 if rStartBase >=end: continue
-        #             elif chrmId == rEndChromIx:
-        #                 if rEndBase <= start: continue
-        #         else:
-        #             if end <= rStartBase or start >= rEndBase: continue
+                    if end <= rStartBase or start >= rEndBase: continue
                 
-        #         # remove index offset since the stored binary starts from 0
-        #         diffOffset = self.header.get("fullIndexOffset")
-        #         if zoomlvl > -1:
-        #             diffOffset = self.zooms[zoomlvl][1]
+                # remove index offset since the stored binary starts from 0
+                diffOffset = self.header.get("fullIndexOffset")
+                if zoomlvl > -1:
+                    diffOffset = self.zooms[zoomlvl][1]
                 
-        #         childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
-        #         self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
+                childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
+                self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
         return result
+
+    def traverseRtreeNodes(self, node, zoomlvl, chrmId, start, end, result = []):
+        """Traverse an Rtree to get nodes in the given range
+        """
+        offset = node.get("rOffset")
+
+        if self.cacheData.get(str(offset)):
+            tree = self.cacheData.get(str(offset))
+        else:
+            if node.get("rIsLeaf"):
+                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
+            else:
+                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
+            self.cacheData[str(offset)] = tree
+
+        if node.get("rIsLeaf"):
+            for i in range(0, node.get("rCount")):
+                # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+                data = tree[(i * 32) : ((i+1) * 32)]
+                (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+                if chrmId < rStartChromIx: break
+                if chrmId < rStartChromIx or chrmId > rEndChromIx: continue
+                
+                if rStartChromIx != rEndChromIx:
+                    if chrmId == rStartChromIx:
+                        if rStartBase >= end: continue
+                    elif chrmId == rEndChromIx:
+                        if rEndBase <= start: continue
+                else:
+                    if rStartBase >= end or rEndBase <= start: continue
+                result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
+        else:
+            for i in range(0, node.get("rCount")):
+                # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+                data = tree[(i * 24) : ((i+1) * 24)]
+                (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
+                if chrmId < rStartChromIx: break
+                if not (chrmId >= rStartChromIx and chrmId <= rEndChromIx): continue
+                if rStartChromIx != rEndChromIx:
+                    if chrmId == rStartChromIx:
+                        if rStartBase >=end: continue
+                    elif chrmId == rEndChromIx:
+                        if rEndBase <= start: continue
+                else:
+                    if end <= rStartBase or start >= rEndBase: continue
+                
+                # remove index offset since the stored binary starts from 0
+                diffOffset = self.header.get("fullIndexOffset")
+                if zoomlvl > -1:
+                    diffOffset = self.zooms[zoomlvl][1]
+                
+                childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
+                self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
+        return result
+
+    # def traverseRtreeNodes(self, node, zoomlvl, chrmId, start, end, result = []):
+    #     """Traverse an Rtree to get nodes in the given range
+    #     """
+    #     threshold = 10
+    #     offset = node.get("rOffset")
+
+    #     # print("params ", zoomlvl, chrmId, start, end)
+    #     # print("node: ", node)
+
+    #     if self.cacheData.get(str(offset)):
+    #         tree = self.cacheData.get(str(offset))
+    #     else:
+    #         if node.get("rIsLeaf"):
+    #             # print("leaf")
+    #             tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
+    #         else:
+    #             # print("not leaf")
+    #             tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
+    #         self.cacheData[str(offset)] = tree
+
+    #     # if node.get("rCount") < threshold: 
+    #     print("normal old school linear approach")
+    #     if node.get("rIsLeaf"):
+    #         for i in range(0, node.get("rCount")):
+    #             data = tree[(i * 32) : ((i+1) * 32)]
+    #             # data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
+    #             # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+    #             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+    #             if chrmId < rStartChromIx: break
+    #             if chrmId < rStartChromIx or chrmId > rEndChromIx: continue
+                
+    #             if rStartChromIx != rEndChromIx:
+    #                 if chrmId == rStartChromIx:
+    #                     if rStartBase >= end: continue
+    #                 elif chrmId == rEndChromIx:
+    #                     if rEndBase <= start: continue
+    #             else:
+    #                 if rStartBase >= end or rEndBase <= start: continue
+    #             result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
+    #     else:
+    #         for i in range(0, node.get("rCount")):
+    #             data = tree[(i * 24) : ((i+1) * 24)]
+    #             # data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
+    #             # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+    #             (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
+    #             if chrmId < rStartChromIx: break
+    #             if not (chrmId >= rStartChromIx and chrmId <= rEndChromIx): continue
+    #             if rStartChromIx != rEndChromIx:
+    #                 if chrmId == rStartChromIx:
+    #                     if rStartBase >=end: continue
+    #                 elif chrmId == rEndChromIx:
+    #                     if rEndBase <= start: continue
+    #             else:
+    #                 if end <= rStartBase or start >= rEndBase: continue
+                
+    #             # remove index offset since the stored binary starts from 0
+    #             diffOffset = self.header.get("fullIndexOffset")
+    #             if zoomlvl > -1:
+    #                 diffOffset = self.zooms[zoomlvl][1]
+                
+    #             childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
+    #             self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
+    #     # else:
+    #     # p = 0
+    #     # q = node.get("rCount")
+    #     # i = (p + q) / 2
+    #     # flagi = -1
+    #     # # search for the node that contains exactly the start range
+    #     # while i >= 0 and i < q and q > p and flagi != i:
+    #     #     i = math.ceil(i)
+    #     #     flagi = i
+    #     #     if node.get("rIsLeaf"):
+    #     #         data = tree[(i * 32) : ((i+1) * 32)]
+    #     #         # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+    #     #         # data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
+    #     #         (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+    #     #     else: 
+    #     #         data = tree[(i * 24) : ((i+1) * 24)]
+    #     #         # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+    #     #         # data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
+    #     #         (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)
+    #     #     # print(p, i, q)
+    #     #     # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
+    #     #     # print(chrmId, start, end)
+    #     #     # print(rStartChromIx, rEndChromIx, rStartChromIx != rEndChromIx)
+    #     #     if chrmId < rStartChromIx: 
+    #     #         # if not node.get("rIsLeaf"):
+    #     #         #     break
+    #     #         q = i
+    #     #         i = (i + p - 1) / 2
+    #     #         continue
+    #     #     if chrmId > rEndChromIx: 
+    #     #         p = i
+    #     #         i = (i + q - 1) / 2
+    #     #         continue
+    #     #     if rStartChromIx != rEndChromIx:
+    #     #         if chrmId == rStartChromIx:
+    #     #             if rStartBase >= start: 
+    #     #                 q = i
+    #     #                 i = (i + p - 1) / 2
+    #     #                 continue
+    #     #         elif chrmId == rEndChromIx:
+    #     #             if rEndBase <= start: 
+    #     #                 p = i
+    #     #                 i = (i + q - 1) / 2
+    #     #                 continue
+    #     #     else:
+    #     #         if rStartBase >= start:
+    #     #             q = i
+    #     #             i = (i + p - 1) / 2
+    #     #             continue
+    #     #         if rEndBase <= start: 
+    #     #             p = i
+    #     #             i = (i + q - 1) / 2
+    #     #             continue
+            
+    #     #     break
+    #     # i = math.ceil(i)
+    #     # while i < node.get("rCount"):
+    #     #     if node.get("rIsLeaf"):
+    #     #         data = tree[(i * 32) : ((i+1) * 32)]
+    #     #         # data = self.tree.get(str(zoomlvl))[offset + (i * 32) : offset + ( (i+1) * 32 )]
+    #     #         # data = self.getTreeBytes(zoomlvl, offset + (i * 32), 32)
+    #     #         (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize) = struct.unpack(self.endian + "IIIIQQ", data)
+    #     #     else:
+    #     #         data = tree[(i * 24) : ((i+1) * 24)]
+    #     #         # data = self.tree.get(str(zoomlvl))[offset + (i * 24) : offset + ( (i+1) * 24 )]
+    #     #         # data = self.getTreeBytes(zoomlvl, offset + (i * 24), 24)
+    #     #         (rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset) = struct.unpack(self.endian + "IIIIQ", data)    
+    #     #     # print(i, node.get("rCount"))
+    #     #     # print(rStartChromIx, rStartBase, rEndChromIx, rEndBase)
+    #     #     # print(chrmId, start, end)
+    #     #     if chrmId > rEndChromIx or chrmId < rStartChromIx:
+    #     #         break
+    #     #     if chrmId == rStartChromIx:
+    #     #         if rStartBase >= end:
+    #     #             break
+    #     #     if node.get("rIsLeaf"):
+    #     #         result.append((rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize))
+    #     #         # result.append((rStartBase, rEndBase, rdataOffset, rDataSize))
+    #     #     else:                  
+    #     #         diffOffset = self.header.get("fullIndexOffset")
+    #     #         if zoomlvl > -1:
+    #     #             diffOffset = self.zooms[zoomlvl][1]
+                
+    #     #         childNode = self.readRtreeNode(zoomlvl, rdataOffset - diffOffset)
+    #     #         self.traverseRtreeNodes(childNode, zoomlvl, chrmId, start, end, result)
+    #     #     i +=1
+    #     return result
 
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
         """Parse an Rtree leaf node

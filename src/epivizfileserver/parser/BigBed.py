@@ -37,6 +37,25 @@ class BigBed(BigWig):
         allColumns.extend(columns[3:])
         return allColumns
 
+    def getZoomHeader(self):
+        self.sync = True
+        self.zooms = {}
+        totalLevels = self.header.get("zoomLevels")
+        if totalLevels <= 0:
+            return -2, self.header.get("fullIndexOffset")
+        data = self.get_bytes(64, totalLevels * 24)
+        
+        for level in range(0, totalLevels):
+            ldata = data[level*24:(level + 1)*24]
+            (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
+            self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
+
+        # buffer placeholder for the last zoom level
+        self.zooms[totalLevels - 1].append(-1)
+        # set buffer size for other zoom levels
+        for level in range(0, totalLevels - 1):
+            self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
+
     ## TODO:    
     ## for BigBeds, use the fullDataOffset
     ## also figure out when using zoom rec is 

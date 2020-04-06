@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 import numpy as np
 from random import randrange
-import umsgpack
+# import umsgpack
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
 
@@ -139,7 +139,6 @@ class Measurement(object):
         data.index = pd.IntervalIndex.from_tuples(data.index)
 
         bins = pd.interval_range(start=start, end=end, freq=freq)
-        # print(bins)
         bins_df = pd.DataFrame(index=bins)
         bins_df["chr"] = chr
         if self.metadata:
@@ -286,7 +285,7 @@ class FileMeasurement(Measurement):
         return cpo(type, name, columns)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
-    async def get_data(self, chr, start, end, bins, bin=True):
+    async def get_data(self, chr, start, end, bins, bin=False):
         """Get data for a genomic region from file
 
         Args: 
@@ -308,24 +307,28 @@ class FileMeasurement(Measurement):
             # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
 
             # rename columns from score to mid for BigWigs
-            if self.mtype in ["BigWig", "bigwig", "bw"]:
+            if self.mtype in ["BigWig", "bigwig", "bw", "bigWig"]:
                 result = result.rename(columns={'score': self.mid})
             elif self.mtype in ['Tabix', 'tabix', 'tbx'] and not self.isGenes:
                 result.columns = ["chr", "start", "end"].extend(self.columns)
                 cols = ["chr", "start", "end"]
+                # if self.metadata:
+                #     cols.extend(self.metadata)
                 cols.append(self.mid)
                 result = result[cols]
+
             if self.isGenes and self.mid is "mm10":
-                # print(self.columns)
-                result.columns = self.columns
+                result.columns = ["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]   
+
+            if self.isGenes and self.mid is "hg19":
+                result.columns = ["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]   
 
             if bin and not self.isGenes: 
                 # json = ujson.dumps(result.to_json())
-                # print(type(json))
                 # result = self.bin_rows(result, chr, start, end)
                 result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
-
+            
             return result, None
         except Exception as e:
             return {}, str(e)
@@ -458,15 +461,11 @@ class WebServerMeasurement(Measurement):
                 params["action"] = "getRows"
                 del params["measurement"]
                 params["datasource"] = self.mid
-            
-            # req = requests.Request('GET', self.source, params=params)
-            # prep = req.prepare()
-            # print(prep.url)
+        
 
             result = requests.get(self.source, params=params)
             # res = umsgpack.unpackb(result.content)
             res = result.json()
-            print(res)
 
             data = res['data']
             dataF = None

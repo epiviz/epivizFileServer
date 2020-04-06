@@ -1,5 +1,5 @@
 import pandas
-import umsgpack
+# import umsgpack
 
 def create_parser_object(format, source, columns=None):
     """Create appropriate File class based on file format
@@ -40,5 +40,5 @@ def toDataFrame(records, header = None):
     input = pandas.DataFrame(records, columns=header)
     return input
 
-def toMsgpack(msg):
-    return umsgpack.packb(msg)
+# def toMsgpack(msg):
+#     return umsgpack.packb(msg)
