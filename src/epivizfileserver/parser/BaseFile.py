@@ -73,6 +73,15 @@ class BaseFile(object):
         """
         return ujson.dumps(data)
 
+    def parse_url(self, furl=None):
+        if furl is None:
+            furl = self.file
+        self.fuparse = urlparse(furl)
+        if self.fuparse.scheme in ["ftp", "http"]:
+            self.conn = http.client.HTTPConnection(self.fuparse.netloc)
+        elif self.fuparse.scheme in ["ftps", "https"]:
+            self.conn = http.client.HTTPSConnection(self.fuparse.netloc)
+
     def get_bytes(self, offset, size):
         """Get bytes within a given range
 
@@ -92,11 +101,20 @@ class BaseFile(object):
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
             if self.conn is None:
-                self.fuparse = urlparse(self.file)
-                self.conn = http.client.HTTPConnection(self.fuparse.netloc)
+                self.parse_url()
+
             self.conn.request("GET", url=self.fuparse.path, headers=headers)
             response = self.conn.getresponse()
-            resp = response.read()
+            if response.status == 302:
+                # connection redirected and found resource - usually https
+                new_loc = response.getheader("Location")
+                print("url redirected & found ", new_loc)
+                self.parse_url(new_loc)    
+                self.conn.request("GET", url=self.fuparse.path, headers=headers)
+                response = self.conn.getresponse()    
+                resp = response.read()    
+            else:
+                resp = response.read()
             return resp[:size]
 
     def bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):

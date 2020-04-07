@@ -185,10 +185,15 @@ class DataRequest(EpivizRequest):
                         break
                 else:
                     if rec.mid in self.params.get("measurement"):
+                        # legacy support for browsers that do not send this param
+                        if "bins" not in self.request.keys():
+                            tbins = 400
+                        else:
+                            tbins = int(self.request.get("bins"))
                         result, err = await rec.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
                                     int(self.params.get("end")),
-                                    int(self.request.get("bins"))
+                                    tbins
                                 )
                         break
             
@@ -199,6 +204,7 @@ class DataRequest(EpivizRequest):
             else:
                 return result, None
         except Exception as e:
+            print("failed in req get_data", str(e))
             return {}, str(e)
 
 class SearchRequest(EpivizRequest):
