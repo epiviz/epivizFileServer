@@ -25,7 +25,8 @@ def create_request(action, request):
         "getCombined": DataRequest,
         "getRows": DataRequest,
         "getValues": DataRequest,
-        "search": SearchRequest
+        "search": SearchRequest, 
+        "fileQuery": FileRequest
     }
 
     return req_manager[action](request)
@@ -243,4 +244,111 @@ class SearchRequest(EpivizRequest):
 
             return result, None
         except Exception as e:
+            return {}, str(e)
+
+class FileRequest(EpivizRequest):
+    """
+    File requests class
+    """
+    def __init__(self, request):
+        super(FileRequest, self).__init__(request)
+        self.params = self.validate_params(request)
+
+    def validate_params(self, request):
+        params_keys = ["datasource", "seqName", "start", "end", "measurement"]
+        params = {"start": 1}
+
+        for key in params_keys:
+            if key in request:
+                params[key] = request.get(key)
+                if key == "start" and params.get(key) in [None, ""]:
+                    params[key] = 1
+                elif key == "end" and params.get(key) in [None, ""]:
+                    params[key] = sys.maxsize
+                elif key == "seqName" and params.get(key) in [None, "", "all"]:
+                    params[key] = None
+                elif key == "metadata[]":
+                    del params["metadata[]"]
+                    params["metadata"] = request.getlist(key)
+                elif key == "measurement":
+                    # del params["measurement"]
+                    params["measurement"] = params.get("measurement").split(",")
+                elif key == "measurements[]":
+                    del params["measurements[]"]
+                    params["measurement"] = request.getlist(key)
+                    if "genes" in params.get("measurement"):
+                        params["measurement"] = None
+            else:
+                if key not in ["measurement", "measurements[]", "start"]:
+                # if key not in ["measurement"]:
+                    raise Exception("missing params in request", key)
+        return params
+
+    async def get_data(self, mHandler):
+        measurements = mMgr.get_measurements()
+        result = None
+
+        try:
+            # legacy support for browsers that do not send this param
+            if "bins" not in self.request.keys():
+                tbins = 400
+            else:
+                tbins = int(self.request.get("bins"))
+
+            if "getRows" in self.request.get("action"):
+                filesep = self.params.get("datasource").split(".")
+
+                if filesep[len(filesep) - 1] in ["bigbed", "bb"]:
+                    rec = FileMeasurement("bigbed", self.params.get("datasource"), self.params.get("datasource"), 
+                            self.params.get("datasource"), annotation=None,
+                            metadata=None, minValue=0, maxValue=5,
+                            isGenes=True, fileHandler=mHandler
+                            )
+                elif filsep[len(filesep) - 1] in ["tabix", "tbx"]:
+                    url = "http://obj.umiacs.umd.edu/genomes/"
+                    if "hg19" in self.params.get("datasource"):
+                        genome = "hg19"
+                    elif "mm9" in self.params.get("datasource"):
+                        genome = "mm9"
+                    elif "mm10" in self.params.get("datasource"):
+                        genome = "mm10"
+                    
+                    gurl = url + genome + "/" + genome + ".txt.gz"
+                    
+                    rec = FileMeasurement("tabix", genome, genome, 
+                                gurl, annotation={"group": "genome"},
+                                metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                                isGenes=isGene, fileHandler=mHandler, 
+                                columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                            )
+
+                result, err = await rec.get_data(self.params.get("seqName"), 
+                            int(self.params.get("start")), 
+                            int(self.params.get("end")),
+                            tbins
+                        )
+            else:
+                filesep = self.params.get("measurement").split(".")
+
+                if filsep[len(filesep) - 1] in ["bigwig", "bw"]:
+                    rec = FileMeasurement(filsep[len(filesep) - 1], self.params.get("measurement"), self.params.get("measurement"), 
+                                self.params.get("measurement"), annotation=None,
+                                metadata=None, minValue=0, maxValue=5,
+                                isGenes=False, fileHandler=mHandler
+                                )
+
+                    result, err = await rec.get_data(self.params.get("seqName"), 
+                                int(self.params.get("start")), 
+                                int(self.params.get("end")),
+                                tbins
+                            )
+            
+            # result = result.to_json(orient='records')
+            result = utils.format_result(result, self.params)
+            if self.request.get("action") == "getRows":
+                return result["rows"], None
+            else:
+                return result, None
+        except Exception as e:
+            print("failed in req get_data", str(e))
             return {}, str(e)
