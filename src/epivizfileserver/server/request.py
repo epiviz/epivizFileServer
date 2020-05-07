@@ -5,6 +5,7 @@ import sys
 import os
 from ..handler import FileHandlerProcess
 import asyncio
+from ..measurements import FileMeasurement
 
 def create_request(action, request):
     """
@@ -285,7 +286,6 @@ class FileRequest(EpivizRequest):
         return params
 
     async def get_data(self, mHandler):
-        measurements = mMgr.get_measurements()
         result = None
 
         try:
@@ -304,7 +304,7 @@ class FileRequest(EpivizRequest):
                             metadata=None, minValue=0, maxValue=5,
                             isGenes=True, fileHandler=mHandler
                             )
-                elif filsep[len(filesep) - 1] in ["tabix", "tbx"]:
+                elif filesep[len(filesep) - 1] in ["tabix", "tbx"]:
                     url = "http://obj.umiacs.umd.edu/genomes/"
                     if "hg19" in self.params.get("datasource"):
                         genome = "hg19"
@@ -328,11 +328,13 @@ class FileRequest(EpivizRequest):
                             tbins
                         )
             else:
-                filesep = self.params.get("measurement").split(".")
+                print("in else")
+                filesep = self.params.get("datasource").split(".")
+                print(filesep)
 
-                if filsep[len(filesep) - 1] in ["bigwig", "bw"]:
-                    rec = FileMeasurement(filsep[len(filesep) - 1], self.params.get("measurement"), self.params.get("measurement"), 
-                                self.params.get("measurement"), annotation=None,
+                if filesep[len(filesep) - 1] in ["bigwig", "bw"]:
+                    rec = FileMeasurement(filesep[len(filesep) - 1], self.params.get("datasource"), self.params.get("datasource"), 
+                                self.params.get("datasource"), annotation=None,
                                 metadata=None, minValue=0, maxValue=5,
                                 isGenes=False, fileHandler=mHandler
                                 )
