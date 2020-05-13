@@ -409,14 +409,16 @@ class BigWig(BaseFile):
         """
         offset = node.get("rOffset")
 
-        if self.cacheData.get(str(offset)):
-            tree = self.cacheData.get(str(offset))
+        if self.cacheData.get(str(zoomlvl) + "-" + str(offset)):
+            tree = self.cacheData.get(str(zoomlvl) + "-" + str(offset))
         else:
             if node.get("rIsLeaf"):
+                # print("leaf")
                 tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
             else:
+                # print("not leaf")
                 tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
-            self.cacheData[str(offset)] = tree
+            self.cacheData[str(zoomlvl) + "-" + str(offset)] = tree
 
         if node.get("rIsLeaf"):
             for i in range(0, node.get("rCount")):
