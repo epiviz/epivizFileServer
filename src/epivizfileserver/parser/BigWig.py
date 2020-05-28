@@ -642,7 +642,7 @@ class BigWig(BaseFile):
                 (startv, endv, valuev) = struct.unpack(self.endian + "IIf", decom[24 + 12*i : 24 + 12*(i+1)])
             elif iType == 2:
                 (startv, valuev) = struct.unpack(self.endian + "If", decom[24 + 8*i : 24 + 8*(i+1)])
-                end = startv + itemSpan
+                endv = startv + itemSpan
             elif iType ==3:
                 (valuev) = struct.unpack(self.endian + "f", decom[24 + 4*i : 24 + 4*(i+1)])
                 startv += itemStep

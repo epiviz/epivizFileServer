@@ -333,7 +333,7 @@ class FileRequest(EpivizRequest):
                 print(filesep)
 
                 if filesep[len(filesep) - 1] in ["bigwig", "bw"]:
-                    rec = FileMeasurement(filesep[len(filesep) - 1], self.params.get("datasource"), self.params.get("datasource"), 
+                    rec = FileMeasurement(filesep[len(filesep) - 1], self.params.get("measurement")[0], self.params.get("datasource"), 
                                 self.params.get("datasource"), annotation=None,
                                 metadata=None, minValue=0, maxValue=5,
                                 isGenes=False, fileHandler=mHandler
