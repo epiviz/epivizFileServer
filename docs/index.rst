@@ -43,6 +43,8 @@ Contents
 
    Installation <installation>
    Tutorial <tutorial>
+   Workspaces <workspaces>
+   Deployment <deployment>
    License <license>
    Authors <authors>
    Changelog <changelog>
