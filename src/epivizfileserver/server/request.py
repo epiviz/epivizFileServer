@@ -297,6 +297,7 @@ class FileRequest(EpivizRequest):
 
             if "getRows" in self.request.get("action"):
                 filesep = self.params.get("datasource").split(".")
+                # rec = None
 
                 if filesep[len(filesep) - 1] in ["bigbed", "bb"]:
                     rec = FileMeasurement("bigbed", self.params.get("datasource"), self.params.get("datasource"), 
@@ -304,7 +305,8 @@ class FileRequest(EpivizRequest):
                             metadata=None, minValue=0, maxValue=5,
                             isGenes=True, fileHandler=mHandler
                             )
-                elif filesep[len(filesep) - 1] in ["tabix", "tbx"]:
+                # elif filesep[len(filesep) - 1] in ["tabix", "tbx", "tbi", "gz"]:
+                else:
                     url = "http://obj.umiacs.umd.edu/genomes/"
                     if "hg19" in self.params.get("datasource"):
                         genome = "hg19"
@@ -312,13 +314,16 @@ class FileRequest(EpivizRequest):
                         genome = "mm9"
                     elif "mm10" in self.params.get("datasource"):
                         genome = "mm10"
+                    else: 
+                        genome = None
+                        return [], ""
                     
                     gurl = url + genome + "/" + genome + ".txt.gz"
                     
                     rec = FileMeasurement("tabix", genome, genome, 
                                 gurl, annotation={"group": "genome"},
                                 metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
-                                isGenes=isGene, fileHandler=mHandler, 
+                                isGenes=True, fileHandler=mHandler, 
                                 columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                             )
 
