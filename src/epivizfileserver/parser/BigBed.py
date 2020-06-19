@@ -126,11 +126,11 @@ class BigBed(BigWig):
             while x < length and x+12 < length:
                 (chrmIdv, startv, endv) = struct.unpack(self.endian + "III", decom[x:x + 12])
                 x += 12
-                (noCols) = struct.unpack(self.endian + "c", decom[x:x+1])
+                # print(noCols)
 
-                if noCols[0].decode() == '\x00': 
+                if self.header.get("fieldCount") == 3: 
                     result.append((chrmIdv, startv, endv))
-                else :
+                elif self.header.get("fieldCount") > 3:
                     if self.colFlag:
                         self.columns = ["chr", "start", "end", "column"]
                         self.colFlag = False
