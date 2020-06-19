@@ -12,6 +12,7 @@ class BigBed(BigWig):
     """
     magic = "0x8789F2EB"
     def __init__(self, file, columns=None):
+        self.colFlag = False
         super(BigBed, self).__init__(file, columns=columns)
 
     # def getHeader(self):
@@ -25,17 +26,24 @@ class BigBed(BigWig):
         Returns: 
             an array of columns in file parsed from autosql
         """
-        data = self.get_bytes(self.header.get("autoSqlOffset"), self.header.get("totalSummaryOffset") - self.header.get("autoSqlOffset")).decode('ascii')
-        columns = []
-        lines = data.split("\n")
-        for l in lines[3:len(lines)-2]:
-            words = l.split(" ")
-            words = list(filter(None, words))
-            if len(words) > 1:
-                columns.append(words[1])
-        allColumns = ["chr", "start", "end"]
-        allColumns.extend(columns[3:])
-        return allColumns
+        # print(self.header)
+
+        if self.header.get("autoSqlOffset") == 0:
+            self.colFlag = True
+            return ["chr", "start", "end"]
+        else:
+            data = self.get_bytes(self.header.get("autoSqlOffset"), self.header.get("totalSummaryOffset") - self.header.get("autoSqlOffset"))
+            data = data.decode('utf-8')
+            columns = []
+            lines = data.split("\n")
+            for l in lines[3:len(lines)-2]:
+                words = l.split(" ")
+                words = list(filter(None, words))
+                if len(words) > 1:
+                    columns.append(words[1])
+            allColumns = ["chr", "start", "end"]
+            allColumns.extend(columns[3:])
+            return allColumns
 
     def getZoomHeader(self):
         self.sync = True
@@ -106,6 +114,7 @@ class BigBed(BigWig):
         result = []
         x = 0
         length = len(decom)
+        # print(self.columns)
 
         if zoomlvl is not -2:
             ## Not used currently.
@@ -117,26 +126,34 @@ class BigBed(BigWig):
             while x < length and x+12 < length:
                 (chrmIdv, startv, endv) = struct.unpack(self.endian + "III", decom[x:x + 12])
                 x += 12
-                if chrmIdv == chrmId:
-                    valuev = ""
-                    while x < length:
-                        (tempv) = struct.unpack(self.endian + "c", decom[x:x+1])
-                        (tempNext) = struct.unpack(self.endian + "c", decom[x+1:x+2])
-                        valuev += str(tempv[0].decode())
-                        if tempNext[0].decode() == '\x00': 
-                            if startv <= end:
-                                tRec = (chrmIdv, startv, endv)
-                                tValues = tuple(valuev.split("\t"))
-                                result.append(tRec + tValues)
-                            break
-                        x += 1
-                else:
-                    while x < length:
-                        (tempv) = struct.unpack(self.endian + "c", decom[x:x+1])
-                        (tempNext) = struct.unpack(self.endian + "c", decom[x+1:x+2])
-                        if tempNext[0].decode() == '\x00': 
-                            break
-                        x += 1
-                x += 2
+                (noCols) = struct.unpack(self.endian + "c", decom[x:x+1])
+
+                if noCols[0].decode() == '\x00': 
+                    result.append((chrmIdv, startv, endv))
+                else :
+                    if self.colFlag:
+                        self.columns = ["chr", "start", "end", "column"]
+                        self.colFlag = False
+                    if chrmIdv == chrmId:
+                        valuev = ""
+                        while x < length:
+                            (tempv) = struct.unpack(self.endian + "c", decom[x:x+1])
+                            (tempNext) = struct.unpack(self.endian + "c", decom[x+1:x+2])
+                            valuev += str(tempv[0].decode())
+                            if tempNext[0].decode() == '\x00': 
+                                if startv <= end:
+                                    tRec = (chrmIdv, startv, endv)
+                                    tValues = tuple(valuev.split("\t", len(self.columns) - 4))
+                                    result.append(tRec + tValues)
+                                break
+                            x += 1
+                    else:
+                        while x < length:
+                            (tempv) = struct.unpack(self.endian + "c", decom[x:x+1])
+                            (tempNext) = struct.unpack(self.endian + "c", decom[x+1:x+2])
+                            if tempNext[0].decode() == '\x00': 
+                                break
+                            x += 1
+                    x += 2
 
         return result
