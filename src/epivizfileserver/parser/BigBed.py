@@ -15,22 +15,18 @@ class BigBed(BigWig):
         self.colFlag = False
         super(BigBed, self).__init__(file, columns=columns)
 
-    # def getHeader(self):
-    #     super(BigBed, self).getHeader()
-    #     if self.columns is None:
-    #         self.columns = self.get_autosql()
-
     def get_autosql(self):
         """parse autosql stored in file
 
         Returns: 
             an array of columns in file parsed from autosql
         """
-        # print(self.header)
-
         if self.header.get("autoSqlOffset") == 0:
             self.colFlag = True
-            return ["chr", "start", "end"]
+            cols = ["chr", "start", "end"]
+            for i in range(0, self.header.get("fieldCount") - 3):
+                cols.append("column_" + str(i))
+            return cols
         else:
             data = self.get_bytes(self.header.get("autoSqlOffset"), self.header.get("totalSummaryOffset") - self.header.get("autoSqlOffset"))
             data = data.decode('utf-8')
@@ -45,76 +41,20 @@ class BigBed(BigWig):
             allColumns.extend(columns[3:])
             return allColumns
 
-    def getZoomHeader(self):
-        self.sync = True
-        self.zooms = {}
-        totalLevels = self.header.get("zoomLevels")
-        if totalLevels <= 0:
-            return -2, self.header.get("fullIndexOffset")
-        data = self.get_bytes(64, totalLevels * 24)
-        
-        for level in range(0, totalLevels):
-            ldata = data[level*24:(level + 1)*24]
-            (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
-            self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
-
-        # buffer placeholder for the last zoom level
-        self.zooms[totalLevels - 1].append(-1)
-        # set buffer size for other zoom levels
-        for level in range(0, totalLevels - 1):
-            self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
-
-    ## TODO:    
-    ## for BigBeds, use the fullDataOffset
-    ## also figure out when using zoom rec is 
-    ## appropriate for BigBed
-    def getZoom(self, zoomlvl, binSize):
-        """Get Zoom record for the given bin size
-
-        Args:
-            zoomlvl (int): zoomlvl to get
-            binSize (int): bin data by bin size
-
-        Returns: 
-            zoom level
-        """
-        if not hasattr(self, 'zooms'):
-            self.sync = True
-            self.zooms = {}
-            totalLevels = self.header.get("zoomLevels")
-            if totalLevels <= 0:
-                return -2, self.header.get("fullIndexOffset")
-            data = self.get_bytes(64, totalLevels * 24)
-            
-            for level in range(0, totalLevels):
-                ldata = data[level*24:(level + 1)*24]
-                (reductionLevel, reserved, dataOffset, indexOffset) = struct.unpack(self.endian + "IIQQ", ldata)
-                self.zooms[level] = [reductionLevel, indexOffset, dataOffset]
-
-            # buffer placeholder for the last zoom level
-            self.zooms[totalLevels - 1].append(-1)
-            # set buffer size for other zoom levels
-            for level in range(0, totalLevels - 1):
-                self.zooms[level].append(self.zooms[level + 1][2] - self.zooms[level][1])
-
-        lvl = -2
-        offset = self.header.get("fullIndexOffset")
-        return lvl, offset
-
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
         """Parse leaf node
-        """
-        if self.cacheData.get(str(rdataOffset)):
-            decom = self.cacheData.get(str(rdataOffset))
+        """       
+        if self.cacheData.get(str(zoomlvl) + "-" + str(rdataOffset)):
+            decom = self.cacheData.get(str(zoomlvl) + "-" + str(rdataOffset))
         else:
             self.sync = True
             data = self.get_bytes(rdataOffset, rDataSize)
             decom = zlib.decompress(data) if self.compressed else data
-            self.cacheData[str(rdataOffset)] = decom
+            self.cacheData[str(zoomlvl) + "-" + str(rdataOffset)] = decom
+
         result = []
         x = 0
         length = len(decom)
-        # print(self.columns)
 
         if zoomlvl is not -2:
             ## Not used currently.
@@ -123,17 +63,15 @@ class BigBed(BigWig):
             for i in range(0, itemCount):
                 (chromId, statv, endv, validCount, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[i*32 : (i+1)*32])
         else:
-            while x < length and x+12 < length:
+            # print(chromId, chromStart, chromEnd, itemStep, itemSpan, iType, itemCount)
+            while x < length:
                 (chrmIdv, startv, endv) = struct.unpack(self.endian + "III", decom[x:x + 12])
                 x += 12
-                # print(noCols)
-
+                
                 if self.header.get("fieldCount") == 3: 
                     result.append((chrmIdv, startv, endv))
+                    x += 1
                 elif self.header.get("fieldCount") > 3:
-                    if self.colFlag:
-                        self.columns = ["chr", "start", "end", "column"]
-                        self.colFlag = False
                     if chrmIdv == chrmId:
                         valuev = ""
                         while x < length:
