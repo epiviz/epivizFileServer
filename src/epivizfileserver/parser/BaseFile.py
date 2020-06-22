@@ -103,6 +103,8 @@ class BaseFile(object):
             if self.conn is None:
                 self.parse_url()
 
+            # if connection is disconnect, reconnect
+            self.conn.connect()
             self.conn.request("GET", url=self.fuparse.path, headers=headers)
             response = self.conn.getresponse()
             if response.status == 302:
