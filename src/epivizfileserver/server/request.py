@@ -229,16 +229,14 @@ class SearchRequest(EpivizRequest):
 
     async def get_data(self, mMgr):
         
-        result = None
+        result = []
 
         try:
+            if len(q) > 1:
             genome = mMgr.genome[mMgr.genome['gene'].str.contains(self.params.get("q"), na=False, case=False)]
-            result = []
 
             if len(genome) > 0:
-                # print(len(genome))
-                for index, row in genome.iterrows():
-                    # print(row)
+                    for index, row in genome.head():
                     result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
             return result, None
