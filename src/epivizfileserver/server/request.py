@@ -236,8 +236,8 @@ class SearchRequest(EpivizRequest):
                 genome = mMgr.genome[mMgr.genome['gene'].str.contains(self.params.get("q"), na=False, case=False)]
 
                 if len(genome) > 0:
-                        for index, row in genome.head():
-                        result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
+                    for index, row in genome.head():
+                    result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
                 return result, None
         except Exception as e:
