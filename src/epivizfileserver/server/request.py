@@ -237,7 +237,7 @@ class SearchRequest(EpivizRequest):
 
                 if len(genome) > 0:
                     for index, row in genome.head():
-                    result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
+                        result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
                 return result, None
         except Exception as e:
