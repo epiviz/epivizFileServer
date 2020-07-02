@@ -329,7 +329,7 @@ class FileMeasurement(Measurement):
                 result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
             
-            return result, None
+            return result, err
         except Exception as e:
             return {}, str(e)
 
@@ -395,9 +395,13 @@ class ComputedMeasurement(Measurement):
         if len(self.measurements) == 1:
             tbin = False
 
+        futures = []
         for measurement in self.measurements:
-            mea_result, _ = await measurement.get_data(chr, start, end, bins, bin=tbin)
-            # result = [result, mea_result]
+            future = measurement.get_data(chr, start, end, bins, bin=tbin)
+            futures.append(future)
+        
+        for future in futures:
+            mea_result, _ = await future
             result.append(mea_result)
 
         result = pd.concat(result, axis=1)

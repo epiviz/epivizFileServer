@@ -204,8 +204,8 @@ class DataRequest(EpivizRequest):
             else:
                 return result, None
         except Exception as e:
-            print("failed in req get_data", str(e))
-            return {}, str(e)
+            # print("failed in req get_data", str(e))
+            return utils.format_result(pd.DataFrame(), self.params), str(e)
 
 class SearchRequest(EpivizRequest):
     """
