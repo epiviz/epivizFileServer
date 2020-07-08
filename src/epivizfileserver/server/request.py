@@ -172,6 +172,7 @@ class DataRequest(EpivizRequest):
     async def get_data(self, mMgr):
         measurements = mMgr.get_measurements()
         result = None
+        err = None
 
         try:
             for rec in measurements:
@@ -200,12 +201,12 @@ class DataRequest(EpivizRequest):
             # result = result.to_json(orient='records')
             result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
-                return result["rows"], None
+                return result["rows"], err
             else:
-                return result, None
+                return result, err
         except Exception as e:
             # print("failed in req get_data", str(e))
-            return utils.format_result(pd.DataFrame(), self.params), str(e)
+            return utils.format_result(pd.DataFrame(columns = ["chr", "start", "end"]), self.params), str(err) + " --- " + str(e)
 
 class SearchRequest(EpivizRequest):
     """

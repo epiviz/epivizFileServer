@@ -297,6 +297,8 @@ class FileMeasurement(Measurement):
         Returns:
             a dataframe with results
         """ 
+        result = None
+        err = None
         
         try:
             if self.fileHandler is None:
@@ -329,7 +331,7 @@ class FileMeasurement(Measurement):
                 result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
             
-            return result, err
+            return result, str(err)
         except Exception as e:
             return {}, str(e)
 
