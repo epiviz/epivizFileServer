@@ -100,15 +100,18 @@ class BaseFile(object):
             return bin_value
         else:
             headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
-            if self.conn is None:
+
+            if not hasattr(self, 'conn') or self.conn is None:
                 self.parse_url()
 
+            # if connection is disconnect, reconnect
+            self.conn.connect()
             self.conn.request("GET", url=self.fuparse.path, headers=headers)
             response = self.conn.getresponse()
             if response.status == 302:
                 # connection redirected and found resource - usually https
                 new_loc = response.getheader("Location")
-                print("url redirected & found ", new_loc)
+                # print("url redirected & found ", new_loc)
                 self.parse_url(new_loc)    
                 self.conn.request("GET", url=self.fuparse.path, headers=headers)
                 response = self.conn.getresponse()    

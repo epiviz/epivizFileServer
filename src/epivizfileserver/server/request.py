@@ -174,6 +174,7 @@ class DataRequest(EpivizRequest):
     async def get_data(self, mMgr):
         measurements = mMgr.get_measurements()
         result = None
+        err = None
 
         try:
             for rec in measurements:
@@ -202,12 +203,12 @@ class DataRequest(EpivizRequest):
             # result = result.to_json(orient='records')
             result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
-                return result["rows"], None
+                return result["rows"], err
             else:
-                return result, None
+                return result, err
         except Exception as e:
-            print("failed in req get_data", str(e))
-            return {}, str(e)
+            # print("failed in req get_data", str(e))
+            return utils.format_result(pd.DataFrame(columns = ["chr", "start", "end"]), self.params), str(err) + " --- " + str(e)
 
 class SearchRequest(EpivizRequest):
     """
@@ -231,19 +232,17 @@ class SearchRequest(EpivizRequest):
 
     async def get_data(self, mMgr):
         
-        result = None
+        result = []
 
         try:
-            genome = mMgr.genome[mMgr.genome['gene'].str.contains(self.params.get("q"), na=False, case=False)]
-            result = []
+            if len(q) > 1:
+                genome = mMgr.genome[mMgr.genome['gene'].str.contains(self.params.get("q"), na=False, case=False)]
 
-            if len(genome) > 0:
-                # print(len(genome))
-                for index, row in genome.iterrows():
-                    # print(row)
-                    result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
+                if len(genome) > 0:
+                    for index, row in genome.head():
+                        result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
-            return result, None
+                return result, None
         except Exception as e:
             return {}, str(e)
 

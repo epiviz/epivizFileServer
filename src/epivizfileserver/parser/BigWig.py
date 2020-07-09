@@ -154,30 +154,33 @@ class BigWig(BaseFile):
 
         if bins is None:
             bins = 2000
-        
-        bins = (end - start) if bins > (end - start) else bins
-        # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
-        if zoomlvl != -2:
-            zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
-        else:
-            self.zooms = {}
-            zoomOffset = self.header.get("fullIndexOffset")
 
-        # if not self.tree.get(str(zoomlvl)):
-        #     self.sync = True
-        #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
+        try:
+            bins = (end - start) if bins > (end - start) else bins
+            # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
+            if zoomlvl != -2:
+                zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
+            else:
+                self.zooms = {}
+                zoomOffset = self.header.get("fullIndexOffset")
 
-        values = self.getValues(chr, start, end, zoomlvl)
+            # if not self.tree.get(str(zoomlvl)):
+            #     self.sync = True
+            #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
 
-        # result = values
-        if respType is "DataFrame":
-            result = toDataFrame(values, self.columns)
-            # replace chrmId with chr
-            result["chr"] = chr
+            values = self.getValues(chr, start, end, zoomlvl)
 
-        if self.sync:
-            return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
-        return result, None
+            # result = values
+            if respType is "DataFrame":
+                result = toDataFrame(values, self.columns)
+                # replace chrmId with chr
+                result["chr"] = chr
+
+            if self.sync:
+                return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
+            return result, None
+        except Exception as e:
+            return pd.DataFrame(columns = self.columns), str(e)
 
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset
