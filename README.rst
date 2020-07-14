@@ -2,12 +2,12 @@
 Epiviz File Server
 ==================
 
-.. image:: https://readthedocs.org/projects/epivizfileparser/badge/?version=latest
-    :target: https://epivizfileparser.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/epivizfileserver/badge/?version=latest
+    :target: https://epivizfileserver.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
 
-.. image:: https://travis-ci.org/epiviz/epivizFileParser.svg?branch=master
-    :target: https://travis-ci.org/epiviz/epivizFileParser
+.. image:: https://travis-ci.org/epiviz/epivizFileServer.svg?branch=master
+    :target: https://travis-ci.org/epiviz/epivizFileServer
 
 Compute and Query Parser for Genomic Files
 
