@@ -281,7 +281,7 @@ class FileMeasurement(Measurement):
         Returns:
             An file object
         """ 
-        from parser.utils import create_parser_object as cpo
+        from ..parser.utils import create_parser_object as cpo
         return cpo(type, name, columns)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
@@ -317,13 +317,7 @@ class FileMeasurement(Measurement):
                 # if self.metadata:
                 #     cols.extend(self.metadata)
                 cols.append(self.mid)
-                result = result[cols]
-
-            if self.isGenes and self.mid is "mm10":
-                result.columns = ["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]   
-
-            if self.isGenes and self.mid is "hg19":
-                result.columns = ["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]   
+                result = result[cols]   
 
             if bin and not self.isGenes: 
                 # json = ujson.dumps(result.to_json())

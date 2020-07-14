@@ -107,24 +107,34 @@ class MeasurementManager(object):
         self.measurements.append(tempComputeM)
         return tempComputeM
 
-
-    def add_genome(self, genome, fileHandler=None, url="http://obj.umiacs.umd.edu/genomes/"):
+    def add_genome(self, genome, type, genome_id, url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
         """Add a genome to the list of measurements. The genome has to be tabix indexed for the file server
            to make remote queries. Our tabix indexed files are available at https://obj.umiacs.umd.edu/genomes/index.html
 
         Args: 
-            genome: for example : hg19
+            genome: for example : hg19 if type = "tabix" or full location of gtf file if type = "gtf"
+            genome_id: required if type = "gtf"
             url: url to the genome file
         """
         isGene = True
 
-        gurl = url + genome + "/" + genome + ".txt.gz"
-        tempGenomeM = FileMeasurement("tabix", genome, genome, 
-                        gurl, annotation={"group": "genome"},
-                        metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
-                        isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
-                    )
-        self.measurements.append(tempGenomeM)
+        if type is "tabix":
+            gurl = url + genome + "/" + genome + ".txt.gz"
+            tempGenomeM = FileMeasurement("tabix", genome, genome, 
+                            gurl, annotation={"group": "genome"},
+                            metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                            isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                        )
+            self.measurements.append(tempGenomeM)
+        elif type is "gtf":
+            gurl = genome
+            tempGenomeM = FileMeasurement("gtf", genome_id, genome_id, 
+                            gurl, annotation={"group": "genome"},
+                            metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                            isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                        )
+            self.measurements.append(tempGenomeM)
+            
         return(tempGenomeM)
 
     def get_measurements(self):

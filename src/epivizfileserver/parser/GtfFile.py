@@ -1,11 +1,10 @@
 import pysam
-from .SamFile import SamFile
 from .utils import toDataFrame
 from .Helper import get_range_helper
 import pandas as pd
 
 
-class GtfFile(SamFile):
+class GtfFile(object):
     """
     GTF File Class to parse gtf/gff files 
 
@@ -19,46 +18,39 @@ class GtfFile(SamFile):
         cacheData: cache of accessed data in memory
         columns: column names to use
     """
-    def __init__(self, file, columns=None):
-        self.file = pysam.TabixFile(file)
+    def __init__(self, file, columns=["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"]):
+        self.file = pd.read_csv(file, sep="\t", names = columns)
+        self.file["gene_id"] = self.file["group"].apply(self.parse_attribute, key="gene_id")
+        self.file["transcript_id"] = self.file["group"].apply(self.parse_attribute, key="transcript_id")
+
         self.fileSrc = file
-        self.cacheData = {}
         self.columns = columns
 
-
-    def get_bin(self, x):
-        # return (chr) + tuple(x.split('\t'))
-        result = tuple(str(x).split('\t'))
-        # if seperated by space:
-        if self.ensembl:
-            sgn = " "
-        # if seperated by =:
+    def parse_attribute(self, item, key):
+        if key in item:
+            tstr = item.split(key, 1)
+            tstrval = tstr[1].split(";", 1)
+            return tstrval[0][1:]
         else:
-            sgn = "="
-        attr = [list(filter(bool, subattr.strip().split(sgn, 1))) for subattr in result[8].strip().split(";")]
-        attr = list(filter(bool, attr))
+            return None
 
-        # THIS IS A DICTIONARY. GREAT DESIGN.
-        cols = [k for k,v in attr]
-        data = {}
-        # if (self.columns is None) or (len(self.columns) < (8+len(cols))):
-        #     self.get_col_names(cols)
-        for k, v in zip(self.columns, result[0:9]):
-            data[k] = v
-        for k,v in attr:
-            data[k] = v
-        return data
+    def search_gene(self, query):
+        try:
+            if len(query) > 1:
+                genome = self.file[self.file['gene_id'].str.contains(query, na=False, case=False)]
 
-        # return result[0:9] + tuple([v for k,v in attr])
+                if len(genome) > 0:
+                    for index, row in genome.head():
+                        result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
 
-    def toDF(self, result):
-        return pd.DataFrame.from_dict(result)
-        # return toDataFrame(result)
+                return result, None
+        except Exception as e:
+            return {}, str(e)
 
-    def get_col_names(self, result):
-        return None
+    def get_col_names(self):
+        return self.columns
 
-    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame", ensembl = True):
+    def getRange(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
         """Get data for a given genomic location
 
         Args:
@@ -73,13 +65,36 @@ class GtfFile(SamFile):
             error 
                 if there was any error during the process
         """
-        try:
-            self.ensembl = ensembl
-            self.columns = ["chr", "feature", "source", "start", "end", "score", "strand", "frame"]
-            iter = self.file.fetch(chr, start, end)
+        final_genes = pd.DataFrame(columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"])
 
-            result, _ = get_range_helper(self.toDF, self.get_bin, None, chr, start, end, iter, self.columns, respType)
-            # print(result)
-            return result, None
-        except ValueError as e:
-            raise Exception("didn't find chromId with the given name")
+        try:
+            grange = self.file[(self.file["chr"] == chr) & (self.file["start"] <= end) & (self.file["end"] >= start)]
+
+            if len(grange) > 0:
+                genes = grange.groupby("gene_id")
+
+                for name, gdf in genes:
+                    gdf_exons = gdf[(gdf["feature"].str.contains("exon", case=False, regex=True))]
+                    
+                    if len(gdf_exons) == 0:
+                        gdf_exons = gdf
+
+                    rec = {
+                        "chr": gdf["chr"].unique()[0],
+                        "start": gdf["start"].values.min(),
+                        "end": gdf["end"].values.max(),
+                        "width": gdf["end"].values.max() - gdf["start"].values.min(),
+                        "strand": gdf["strand"].unique()[0],
+                        "geneid": name.replace('"', ""),
+                        "exon_starts": ",".join(str(n) for n in gdf_exons["start"].values),
+                        "exon_ends": ",".join(str(n) for n in gdf_exons["end"].values),
+                        "gene": name.replace('"', "")
+                    }
+                    final_genes = final_genes.append(rec, ignore_index=True)
+
+                return final_genes, None    
+            else:
+                return final_genes, "no genes in the current region"
+
+        except Exception as e:
+            return final_genes, str(e)
