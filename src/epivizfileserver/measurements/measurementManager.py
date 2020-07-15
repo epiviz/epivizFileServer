@@ -46,7 +46,7 @@ class MeasurementManager(object):
                         )
             self.measurements.append(tempDbM)
 
-    def import_files(self, fileSource, fileHandler=None):
+    def import_files(self, fileSource, fileHandler=None, genome=None):
         """Import measurements from a file. 
 
 
@@ -63,8 +63,15 @@ class MeasurementManager(object):
             if "annotation" in rec["datatype"]:
                 isGene = True
 
+            tgenome = rec.get("genome")
+            if tgenome is None:
+                tgenome = genome
+
+            if tgenome is None: 
+                raise Exception("all files must be annotated with its genome build")
+
             tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
-                            rec.get("url"), annotation=rec.get("annotation"),
+                            rec.get("url"), genome=tgenome, annotation=rec.get("annotation"),
                             metadata=rec.get("metadata"), minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler
                         )
@@ -89,7 +96,7 @@ class MeasurementManager(object):
                 measurements.append(tempFile)
         return measurements
 
-    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, annotation=None, metadata=None, computeAxis=1):
+    def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, genome=None, annotation=None, metadata=None, computeAxis=1):
         """Add a Computed Measurement
 
         Args: 
@@ -103,11 +110,11 @@ class MeasurementManager(object):
             a `ComputedMeasurement` object
         """
         
-        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc, annotation=annotation, metadata=metadata, computeAxis=computeAxis)
+        tempComputeM = ComputedMeasurement(mtype, mid, name, measurements=measurements, computeFunc=computeFunc, genome=genome, annotation=annotation, metadata=metadata, computeAxis=computeAxis)
         self.measurements.append(tempComputeM)
         return tempComputeM
 
-    def add_genome(self, genome, type, genome_id, url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
+    def add_genome(self, genome, type, genome_id= None , url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
         """Add a genome to the list of measurements. The genome has to be tabix indexed for the file server
            to make remote queries. Our tabix indexed files are available at https://obj.umiacs.umd.edu/genomes/index.html
 
@@ -121,7 +128,7 @@ class MeasurementManager(object):
         if type is "tabix":
             gurl = url + genome + "/" + genome + ".txt.gz"
             tempGenomeM = FileMeasurement("tabix", genome, genome, 
-                            gurl, annotation={"group": "genome"},
+                            gurl, genome, annotation={"group": "genome"},
                             metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )
@@ -129,7 +136,7 @@ class MeasurementManager(object):
         elif type is "gtf":
             gurl = genome
             tempGenomeM = FileMeasurement("gtf", genome_id, genome_id, 
-                            gurl, annotation={"group": "genome"},
+                            gurl, genome=genome_id, annotation={"group": "genome"},
                             metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )

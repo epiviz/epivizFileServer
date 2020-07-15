@@ -27,7 +27,7 @@ class Measurement(object):
         maxValue: max value of all values, defaults to None
         columns: column names for the file
     """
-    def __init__(self, mtype, mid, name, source, datasource, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
+    def __init__(self, mtype, mid, name, source, datasource, genome=None, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
         self.mtype = mtype      # measurement_type (file/db)
         self.mid = mid          # measurement_id (column name in db/file)
         self.name = name        # measurement_name
@@ -40,6 +40,12 @@ class Measurement(object):
         self.minValue = minValue
         self.maxValue = maxValue
         self.columns = columns
+        self.genome = genome
+
+        if self.annotation is None: 
+            self.annotation = {}
+
+        self.annotation["genome"] = genome
 
     def get_data(self, chr, start, end):
         """
@@ -76,6 +82,11 @@ class Measurement(object):
         """Get measurement annotation
         """
         return self.annotation
+
+    def get_measurement_genome(self):
+        """Get measurement genome
+        """
+        return self.genome
     
     def get_measurement_metadata(self):
         """Get measurement metadata
@@ -179,8 +190,8 @@ class DbMeasurement(Measurement):
     Attributes:
         connection: a database connection object
     """
-    def __init__(self, mtype, mid, name, source, datasource, dbConn, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
-        super(DbMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
+    def __init__(self, mtype, mid, name, source, datasource, dbConn, genome=None, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None, columns=None):
+        super(DbMeasurement, self).__init__(mtype, mid, name, source, datasource, genome, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
         self.query_range = "select distinct %s from %s where chr=%s and end >= %s and start < %s order by chr, start"
         self.query_all = "select distinct %s from %s order by chr, start"
         self.connection = dbConn
@@ -264,8 +275,8 @@ class FileMeasurement(Measurement):
         fileHandler: an optional file handler object to process query requests (uses dask)
     """
 
-    def __init__(self, mtype, mid, name, source, datasource="files", annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None, columns=None):
-        super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
+    def __init__(self, mtype, mid, name, source, datasource="files", genome=None, annotation=None, metadata=None, isComputed=False, isGenes=False, minValue=None, maxValue=None,fileHandler=None, columns=None):
+        super(FileMeasurement, self).__init__(mtype, mid, name, source, datasource, genome, annotation, metadata, isComputed, isGenes, minValue, maxValue, columns)
         self.fileHandler = fileHandler
         self.columns = columns
         # ["chr", "start", "end"].append(mid)
@@ -283,6 +294,32 @@ class FileMeasurement(Measurement):
         """ 
         from ..parser.utils import create_parser_object as cpo
         return cpo(type, name, columns)
+
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filesearchgene")
+    async def search_gene(self, query, maxResults):
+        """Get data for a genomic region from file
+
+        Args: 
+            chr (str): chromosome 
+            start (int): genomic start
+            end (int): genomic end
+
+        Returns:
+            a array of matched genes
+        """ 
+        result = None
+        err = None
+        
+        try:
+            if self.fileHandler is None:
+                file = self.create_parser_object(self.mtype, self.source, self.columns)
+                result, err = file.search_gene(query, maxResults)
+            else:
+                result, err = await self.fileHandler.handleSearch(self.source, self.mtype, query, maxResults)
+         
+            return result, str(err)
+        except Exception as e:
+            return {}, str(e)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
     async def get_data(self, chr, start, end, bins, bin=False):
@@ -303,9 +340,9 @@ class FileMeasurement(Measurement):
         try:
             if self.fileHandler is None:
                 file = self.create_parser_object(self.mtype, self.source, self.columns)
-                result, _ = file.getRange(chr, start, end, bins=bins)
+                result, err = file.getRange(chr, start, end, bins=bins)
             else:
-                result, _ = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end, bins=bins)
+                result, err = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end, bins=bins)
             # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
 
             # rename columns from score to mid for BigWigs
@@ -340,8 +377,8 @@ class ComputedMeasurement(Measurement):
         source: defaults to 'computed'
         datasource: defaults to 'computed'
     """
-    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", annotation={"group": "computed"}, metadata=None, isComputed=True, isGenes=False, fileHandler=None, columns=None, computeAxis=1):
-        super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, annotation, metadata, isComputed, isGenes, columns=columns)
+    def __init__(self, mtype, mid, name, measurements, source="computed", computeFunc=None, datasource="computed", genome=None, annotation={"group": "computed"}, metadata=None, isComputed=True, isGenes=False, fileHandler=None, columns=None, computeAxis=1):
+        super(ComputedMeasurement, self).__init__(mtype, mid, name, source, datasource, genome, annotation, metadata, isComputed, isGenes, columns=columns)
         self.measurements = measurements
         self.computeFunc = computeFunc
         self.fileHandler = fileHandler
@@ -387,6 +424,7 @@ class ComputedMeasurement(Measurement):
             a dataframe with results
         """ 
         result = []
+        err = None
         tbin = True
         if len(self.measurements) == 1:
             tbin = False
@@ -397,7 +435,7 @@ class ComputedMeasurement(Measurement):
             futures.append(future)
         
         for future in futures:
-            mea_result, _ = await future
+            mea_result, err = await future
             result.append(mea_result)
 
         result = pd.concat(result, axis=1)
@@ -416,7 +454,7 @@ class ComputedMeasurement(Measurement):
                 result[self.mid] = result[self.mid].apply(float)
                 # result[self.mid].astype('int64')
                 # result[self.mid] = result.apply(self.computeWrapper(self.computeFunc, columns), axis=1)
-            return result, None
+            return result, str(err)
         except Exception as e:
             return {}, str(e)
 
@@ -461,7 +499,6 @@ class WebServerMeasurement(Measurement):
                 params["action"] = "getRows"
                 del params["measurement"]
                 params["datasource"] = self.mid
-        
 
             result = requests.get(self.source, params=params)
             # res = umsgpack.unpackb(result.content)

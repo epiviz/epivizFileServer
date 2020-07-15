@@ -122,8 +122,29 @@ class FileHandlerProcess(object):
             fileObj = await self.client.gather(fileFuture)
             self.setRecord(fileName, fileObj, fileType)
         fileObj = await self.getRecord(fileName)
-        data, _ = await fileObj.getRange(chr, start, end, bins)
-        return data, _
+        data, err = await fileObj.getRange(chr, start, end, bins)
+        return data, err
+
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlesearch")
+    async def handleSearch(self, fileName, fileType, query, maxResults):
+        """submit tasks to the dask client
+
+        Args: 
+            fileName: file location
+            fileType: file type
+            chr: chromosome
+            start: genomic start
+            end: genomic end
+        """
+
+        if self.records.get(fileName) == None:
+            fileClass = create_parser_object(fileType, fileName)
+            fileFuture = self.client.submit(fileClass, fileName, actor=True)
+            fileObj = await self.client.gather(fileFuture)
+            self.setRecord(fileName, fileObj, fileType)
+        fileObj = await self.getRecord(fileName)
+        data, err = await fileObj.search_gene(query, maxResults)
+        return data, err
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
     async def binFileData(self, fileName, data, chr, start, end, bins, columns, metadata):

@@ -20,8 +20,11 @@ class GtfFile(object):
     """
     def __init__(self, file, columns=["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"]):
         self.file = pd.read_csv(file, sep="\t", names = columns)
-        self.file["gene_id"] = self.file["group"].apply(self.parse_attribute, key="gene_id")
+        self.file["gene_id"] = self.file["group"].apply(self.parse_attribute, key="gene_id").replace('"', "")
+        # self.file["gene_idx"] = self.file["gene_id"].replace('"', "")
         self.file["transcript_id"] = self.file["group"].apply(self.parse_attribute, key="transcript_id")
+
+        # self.file = self.file.set_index("gene_idx")
 
         self.fileSrc = file
         self.columns = columns
@@ -34,16 +37,30 @@ class GtfFile(object):
         else:
             return None
 
-    def search_gene(self, query):
+    def search_gene(self, query, maxResults = 5):
+        result = []
+        err = None
+
         try:
             if len(query) > 1:
-                genome = self.file[self.file['gene_id'].str.contains(query, na=False, case=False)]
+                genome = self.file[self.file["gene_id"].str.contains(query, na=False, case=False)]
 
-                if len(genome) > 0:
-                    for index, row in genome.head():
-                        result.append({"gene": row["gene"], "chr": row["chr"], "start": row["start"], "end": row["end"]})
+                genes = genome.groupby("gene_id")
 
-                return result, None
+                counter = 0
+                for name, gdf in genes:
+                    rec = {
+                        "chr": gdf["chr"].unique()[0],
+                        "start": int(gdf["start"].values.min()),
+                        "end": int(gdf["end"].values.max()),
+                        "gene": name.replace('"', "")
+                    }
+                    result.append(rec)
+                    counter += 1
+                    if counter >= int(maxResults):
+                        break;
+                
+                return result, err
         except Exception as e:
             return {}, str(e)
 
