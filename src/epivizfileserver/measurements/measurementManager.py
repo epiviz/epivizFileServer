@@ -3,6 +3,7 @@ from aiocache.serializers import JsonSerializer
 import pandas as pd
 from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
 from ..trackhub import TrackHub
+from ..parser import GtfFile
 import ujson
 
 class MeasurementManager(object):
@@ -15,6 +16,7 @@ class MeasurementManager(object):
 
     def __init__(self):
         # self.measurements = pd.DataFrame()
+        self.genomes = {}
         self.measurements = []
 
     def import_dbm(self, dbConn):
@@ -132,6 +134,7 @@ class MeasurementManager(object):
                             metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )
+            # self.genomes.append(tempGenomeM)
             self.measurements.append(tempGenomeM)
         elif type is "gtf":
             gurl = genome
@@ -140,6 +143,9 @@ class MeasurementManager(object):
                             metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )
+
+            gtf_file = GtfFile(gurl)
+            self.genomes[genome_id] = gtf_file
             self.measurements.append(tempGenomeM)
             
         return(tempGenomeM)
@@ -148,6 +154,11 @@ class MeasurementManager(object):
         """Get all available measurements
         """
         return self.measurements
+
+    def get_genomes(self):
+        """Get all available genomes
+        """
+        return self.genomes
 
     def import_trackhub(self, hub, handler=None):
         """Import measurements from annotationHub objects. 
