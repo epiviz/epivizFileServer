@@ -126,6 +126,7 @@ class MeasurementManager(object):
             url: url to the genome file
         """
         isGene = True
+        tempGenomeM = None
 
         if type is "tabix":
             gurl = url + genome + "/" + genome + ".txt.gz"
