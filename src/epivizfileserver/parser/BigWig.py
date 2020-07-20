@@ -640,7 +640,7 @@ class BigWig(BaseFile):
         for i in range(0, itemCount):
             if zoomlvl is not -2:
                 (chromId, startv, endv, validCount, minVal, maxVal, sumData, sumSquares) = struct.unpack("4I4f", decom[i*32 : (i+1)*32])
-                valuev = sumData / validCount
+                valuev = (sumData/validCount) if validCount > 0 else sumData
             elif iType == 1:
                 (startv, endv, valuev) = struct.unpack(self.endian + "IIf", decom[24 + 12*i : 24 + 12*(i+1)])
             elif iType == 2:
