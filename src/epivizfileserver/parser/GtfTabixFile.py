@@ -5,7 +5,7 @@ from .Helper import get_range_helper
 import pandas as pd
 
 
-class GtfFile(SamFile):
+class GtfTabixFile(SamFile):
     """
     GTF File Class to parse gtf/gff files 
 

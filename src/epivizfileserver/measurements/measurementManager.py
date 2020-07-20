@@ -3,7 +3,7 @@ from aiocache.serializers import JsonSerializer
 import pandas as pd
 from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
 from ..trackhub import TrackHub
-from ..parser import GtfFile
+from ..parser import GtfParsedFile, TbxFile
 import ujson
 
 class MeasurementManager(object):
@@ -65,12 +65,12 @@ class MeasurementManager(object):
             if "annotation" in rec["datatype"]:
                 isGene = True
 
+            if rec.get("genome") is None and genome is None: 
+                raise Exception("all files must be annotated with its genome build")
+
             tgenome = rec.get("genome")
             if tgenome is None:
                 tgenome = genome
-
-            if tgenome is None: 
-                raise Exception("all files must be annotated with its genome build")
 
             tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
                             rec.get("url"), genome=tgenome, annotation=rec.get("annotation"),
@@ -116,7 +116,7 @@ class MeasurementManager(object):
         self.measurements.append(tempComputeM)
         return tempComputeM
 
-    def add_genome(self, genome, type, genome_id= None , url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
+    def add_genome(self, genome, type, url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
         """Add a genome to the list of measurements. The genome has to be tabix indexed for the file server
            to make remote queries. Our tabix indexed files are available at https://obj.umiacs.umd.edu/genomes/index.html
 
@@ -136,17 +136,19 @@ class MeasurementManager(object):
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )
             # self.genomes.append(tempGenomeM)
+            # gtf_file = TbxFile(gurl)
+            # self.genomes[genome] = gtf_file
             self.measurements.append(tempGenomeM)
         elif type is "gtf":
-            gurl = genome
-            tempGenomeM = FileMeasurement("gtf", genome_id, genome_id, 
-                            gurl, genome=genome_id, annotation={"group": "genome"},
+            gurl = url
+            tempGenomeM = FileMeasurement("gtfparsed", genome, genome, 
+                            gurl, genome=genome, annotation={"group": "genome"},
                             metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
                         )
 
-            gtf_file = GtfFile(gurl)
-            self.genomes[genome_id] = gtf_file
+            gtf_file = GtfParsedFile(gurl)
+            self.genomes[genome] = gtf_file
             self.measurements.append(tempGenomeM)
             
         return(tempGenomeM)

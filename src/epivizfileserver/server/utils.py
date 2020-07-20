@@ -27,7 +27,8 @@ def create_parser_object(format, source):
         "bam": BamFile,
         "tbx": TbxFile,
         "tabix": TbxFile,
-        "gtf": GtfFile
+        "gtf": GtfFile,
+        "gtfparsed": GtfParsedFile
     }
 
     return req_manager[format](source)
