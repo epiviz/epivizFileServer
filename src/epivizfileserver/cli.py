@@ -1,13 +1,12 @@
-"""Download and Build Genome files for use with Epiviz File Server.
+"""Download and Build Genome files for use with Epiviz File Server. either --ucsc or --gtf must be provided.
 
 Usage:
-  efs.py build_genome GENOME [OUTPUT]
-
-Arguments:
-    GENOME  genome to build (hg19, hg34, mm10 etc.)
-    OUTPUT  output path
+  efs.py build_genome (--ucsc=<genome> | --gtf=<file>) [--output=<output>]
 
 Options:
+  --ucsc=<genome> genome build to download and parse from ucsc
+  --gtf=<file> local gtf file
+  --output=<output> output location of file to save, defaults to current directory and save output as output.tsv
   -h --help     Show this screen.
 """
 
@@ -48,16 +47,28 @@ def parse_group(name, chrm, gdf):
 def main():
     args = docopt(__doc__)
     
-    genome = args["GENOME"]
-    output = args["OUTPUT"]
+    genome = args["--ucsc"]
+    gtf = args["--gtf"]
+    output = args["--output"]
 
+    # if genome is None and gtf is None:
+    #     raise("either --ucsc or --gtf must be provided")
+    full_path = None
+    if genome is not None:
+        path = "http://hgdownload.cse.ucsc.edu/goldenPath/" + genome + "/bigZips/genes/"
+        file = genome + ".refGene.gtf.gz"
+        full_path = path + file
+    elif gtf is not None:
+        full_path = gtf
+
+    output = os.getcwd() + "/output.tsv"
     if output is None:
-        output = os.getcwd() + "/" + genome + ".tsv"
+        if genome is not None:
+            output = os.getcwd() + "/" + genome + ".tsv"
 
-    path = "http://hgdownload.cse.ucsc.edu/goldenPath/" + genome + "/bigZips/genes/"
-    file = genome + ".refGene.gtf.gz"
 
-    full_path = path + file
+    if full_path is None:
+        raise("either --ucsc or --gtf must be provided")
 
     print("Reading File - ", full_path)
     df = pd.read_csv(full_path, sep="\t", names = ["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"])
