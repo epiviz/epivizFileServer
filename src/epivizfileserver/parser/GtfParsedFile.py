@@ -25,6 +25,8 @@ class GtfParsedFile(object):
 
         print("Loading annotations", file)
         self.file = pd.read_csv(file, sep="\t", names = columns)
+        self.file["gene_idx"] = self.file["gene"]
+        self.file = self.file.set_index("gene_idx")
 
         print("Parsing chromsomes and their lengths")
         chromosomes = []
@@ -51,14 +53,18 @@ class GtfParsedFile(object):
             if len(query) > 1:
                 matched = self.file[self.file["gene"].str.contains(query, na=False, case=False)]
 
-                for row, index in matched.head(maxResults):
+                counter = 0
+                for index, row in matched.iterrows():
                     rec = {
                         "chr": row["chr"],
-                        "start": row["start"],
-                        "end": row["end"],
+                        "start": int(row["start"]),
+                        "end": int(row["end"]),
                         "gene": row["gene"]
                     }
                     result.append(rec)
+                    counter += 1
+                    if counter >= int(maxResults):
+                        break
                 
                 return result, err
         except Exception as e:
