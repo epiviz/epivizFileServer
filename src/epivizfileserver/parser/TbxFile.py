@@ -2,6 +2,9 @@ import pysam
 from .SamFile import SamFile
 from .utils import toDataFrame
 from .Helper import get_range_helper
+import pandas as pd
+from aiocache import cached, Cache
+from aiocache.serializers import JsonSerializer, PickleSerializer
 
 class TbxFile(SamFile):
     """
@@ -17,10 +20,27 @@ class TbxFile(SamFile):
         cacheData: cache of accessed data in memory
         columns: column names to use
     """
-    def __init__(self, file, columns=None):
+    def __init__(self, file, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]):
         self.file = pysam.TabixFile(file)
         self.cacheData = {}
         self.columns = columns
+
+        # iter = pysam.tabix_iterator(open(file), parser = pysam.asTuple)
+        # (result, _) = get_range_helper(self.toDF, self.get_bin, self.get_col_names, None, None, None, iter, self.columns, respType="DataFrame")
+        
+        # for x, r in enumerate(self.iterator(open(file), pysam.asTuple)):
+        #     print(x)
+        #     print(r)
+
+        # print("Parsing chromsomes and their lengths")
+        # chromosomes = []
+        # groupByChr = result.groupby("chr")
+
+        # for name, gdf in groupByChr:
+        #     chromosomes.append([name, 1, int(gdf["end"].values.max())])
+
+        # self.chromosomes = chromosomes
+            
 
     def get_bin(self, x):
         # return (chr) + tuple(x.split('\t'))
@@ -73,3 +93,12 @@ class TbxFile(SamFile):
             return result, None
         except ValueError as e:
             raise Exception("didn't find chromId with the given name")
+
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="tbxsearchgene")
+    async def searchGene(self, query, maxResults = 5):
+        return [], None
+    
+    @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="tbxgetdata")
+    async def get_data(self, chr, start, end, bins=2000, zoomlvl=-1, metric="AVG", respType = "DataFrame"):
+        return self.getRange(chr, start, end, bins=bins, zoomlvl=zoomlvl, metric=metric, respType=respType)
+
