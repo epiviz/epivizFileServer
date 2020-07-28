@@ -116,7 +116,7 @@ class MeasurementManager(object):
         self.measurements.append(tempComputeM)
         return tempComputeM
 
-    def add_genome(self, genome, type, url="http://obj.umiacs.umd.edu/genomes/", fileHandler=None):
+    def add_genome(self, genome, url="http://obj.umiacs.umd.edu/genomes/", type=None, fileHandler=None):
         """Add a genome to the list of measurements. The genome has to be tabix indexed for the file server
            to make remote queries. Our tabix indexed files are available at https://obj.umiacs.umd.edu/genomes/index.html
 
@@ -128,7 +128,7 @@ class MeasurementManager(object):
         isGene = True
         tempGenomeM = None
 
-        if type is "tabix":
+        if type == "tabix":
             gurl = url + genome + "/" + genome + ".txt.gz"
             tempGenomeM = FileMeasurement("tabix", genome, genome, 
                             gurl, genome, annotation={"group": "genome"},
@@ -139,7 +139,7 @@ class MeasurementManager(object):
             # gtf_file = TbxFile(gurl)
             # self.genomes[genome] = gtf_file
             self.measurements.append(tempGenomeM)
-        elif type is "gtf":
+        elif type == "efs-tsv":
             gurl = url
             tempGenomeM = FileMeasurement("gtfparsed", genome, genome, 
                             gurl, genome=genome, annotation={"group": "genome"},
@@ -148,6 +148,17 @@ class MeasurementManager(object):
                         )
 
             gtf_file = GtfParsedFile(gurl)
+            self.genomes[genome] = gtf_file
+            self.measurements.append(tempGenomeM)
+        elif type == "gtf":
+            gurl = url
+            tempGenomeM = FileMeasurement("gtf", genome, genome, 
+                            gurl, genome=genome, annotation={"group": "genome"},
+                            metadata=["geneid", "exons_start", "exons_end", "gene"], minValue=0, maxValue=5,
+                            isGenes=isGene, fileHandler=fileHandler, columns=["chr", "start", "end", "width", "strand", "geneid", "exon_starts", "exon_ends", "gene"]
+                        )
+
+            gtf_file = GtfFile(gurl)
             self.genomes[genome] = gtf_file
             self.measurements.append(tempGenomeM)
             
