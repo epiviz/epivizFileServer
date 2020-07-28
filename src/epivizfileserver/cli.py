@@ -4,9 +4,9 @@ Usage:
   efs.py build_genome (--ucsc=<genome> | --gtf=<file>) [--output=<output>]
 
 Options:
-  --ucsc=<genome> genome build to download and parse from ucsc
+  --ucsc=<genome> genome build to download and parse from ucsc, eg: mm10
   --gtf=<file> local gtf file
-  --output=<output> output location of file to save, defaults to current directory and save output as output.tsv
+  --output=<output> output prefix of file to save, defaults to current directory and saves result as output.tsv eg: ./mm10
   -h --help     Show this screen.
 """
 
@@ -61,10 +61,13 @@ def main():
     elif gtf is not None:
         full_path = gtf
 
-    output = os.getcwd() + "/output.tsv"
     if output is None:
         if genome is not None:
-            output = os.getcwd() + "/" + genome + ".tsv"
+            output = os.getcwd() + "/" + genome + ".tsv.gz"
+        else:
+            output = os.getcwd() + "/output.tsv.gz"
+    else:
+        output = output + ".tsv.gz"
 
 
     if full_path is None:
