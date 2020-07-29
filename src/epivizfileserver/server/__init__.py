@@ -147,7 +147,7 @@ async def process_request(request):
                     status=200)
 
 
-@app.route("/ping", methods=["GET"])
+@app.route("/status", methods=["GET"])
 async def process_request(request):
     return response.json({
             "requestId": -1, 
