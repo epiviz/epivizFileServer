@@ -58,6 +58,12 @@ class Measurement(object):
         """
         raise Exception("NotImplementedException")
 
+    def get_status(self):
+        """
+        Get status of this measurement (most pertinent for files)
+        """
+        raise Exception("NotImplementedException")
+
     def get_measurement_name(self):
         """Get measurement name
         """
@@ -365,6 +371,14 @@ class FileMeasurement(Measurement):
             return result, str(err)
         except Exception as e:
             return {}, str(e)
+
+    async def get_status(self):
+        result = 0
+        err = None
+
+        file = self.create_parser_object(self.mtype, self.source, self.columns)
+        result, err = file.get_status()
+        return result, err
 
 class ComputedMeasurement(Measurement):
     """

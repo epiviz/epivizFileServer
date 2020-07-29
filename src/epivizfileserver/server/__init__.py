@@ -3,7 +3,7 @@ from sanic.response import json
 from ..handler import FileHandlerProcess
 # import asyncio
 import ujson
-from .request import create_request
+from .request import create_request, StatusRequest
 from sanic_cors import CORS, cross_origin
 import os
 import sys
@@ -155,4 +155,20 @@ async def process_request(request):
             "error": None,
             "version": 5,
             "data": "EFS up"},
+        status=200)
+
+@app.route("/status/<datasource>", methods=["GET"])
+async def process_request(request, datasource):
+    epiviz_request = StatusRequest(request, datasource)
+    result, error = await epiviz_request.get_status(request.app.epivizMeasurementsManager)
+    print(result)
+    print(error)
+
+    result = "ok: {} bytes read".format(result) if result > 0 else "fail"
+    return response.json({
+            "requestId": -1,
+            "type": "response",
+            "error": error,
+            "version": 5,
+            "data": "check status of datasource " + datasource + ": " + result},
         status=200)

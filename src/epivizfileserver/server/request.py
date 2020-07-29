@@ -254,3 +254,28 @@ class SearchRequest(EpivizRequest):
             return result, err
         except Exception as e:
             return {}, str(e)
+
+class StatusRequest(EpivizRequest):
+    def __init__(self, request, datasource):
+        super(StatusRequest, self).__init__(request)
+        self.datasource = datasource
+
+    async def get_status(self, mMgr):
+        measurements = mMgr.get_measurements()
+        genomes = mMgr.get_genomes()
+        result = 0
+        err = None
+
+        try:
+            if self.datasource in genomes:
+                file = genomes[self.datasource]
+                result, err = await file.get_status()
+            else:
+                for rec in measurements:
+                    if rec.mid == self.datasource:
+                        result, err = await rec.get_status()
+                        break
+            return result, err
+        except Exception as e:
+            # print("failed in req get_data", str(e))
+            return 0, str(err) + " --- " + str(e)
