@@ -1,8 +1,18 @@
 language: python
 python:
-  - "3.6"
+- '3.6'
 cache: pip
 install:
-  - pip install -r requirements.txt
-  - pip install .
+- pip install -r requirements.txt
+- pip install .
 script: python setup.py test
+deploy:
+  provider: pypi
+  username: jkanche
+  password:
+    secure: o3i51B6J3K1i1704zAOn/5vq9PqF8oCQS0QrCLf/QjtvDWbRSrqtaN/uKGNJk/OH+GHm73UUTIRVB83hQnomvkl85DUMlN2rWFgP/x5t3XflV6dLk64gO9qJEH5MhFjrKn+oRy9PJjBtr2+kW7WBFBpBV5NhNoKEEM7sQ77MHN0g2fdoj84qiKaEl2lntLJibfX3q/vMglK3WL0JTCy7QSjB4g8cIw7+mMVn8KPTAQBA/N/6u47RwGIIgPB5POt4N77sJmubRaYBk2xmhQGQkUEY7vqd1Oo6y+kgLXSMr/jVDlRjdrLxpokyUnLt0jAq2ZEfpyyUJdDEpO0/4yehu3KKOK+Fycb1b21CbQUINmWNGbUW2e0wB+ULxFzSRHAXfQy0mZMaYXDB+QpBCPUhzM9kTPnYSDCa9ZSg/mrFJTwGJdbSELJTJpLdTQvE+vqmJeQ1TLFSDOzDnO8pRjao3LSAabIKrn/IHZ9V7G5qkfg+um+xmygmZyeJBH+kcWEleUU0zPbXBDMNcEsSxKs+scfJ47M59tOd1LFuHwp0k9OFztCv7PO+P6VWrfpRWZ+20Yp1zpMk5+u5Q7RgZq06Ivv8W38plIXk0chifWr9iu6NVhCWQn9fUwg2FuJjq7zrYpo3oldCgcfgbWlgjB0muFD9YsrAAAeiK/XIMOL2RiM=
+  on:
+    branch: master
+    tags: true
+  distributions: sdist bdist_wheel
+  skip_existing: true
