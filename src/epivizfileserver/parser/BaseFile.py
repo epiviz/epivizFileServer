@@ -151,3 +151,10 @@ class BaseFile(object):
         bins_df["start"] = bins_df.index.left
         bins_df["end"] = bins_df.index.right
         return bins_df, None
+
+    def get_status(self):
+        res = self.get_bytes(0, 64)
+        if len(res) > 0 :
+            return len(res), None
+        else:
+            return 0, "Could not read bytes"
