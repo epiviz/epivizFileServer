@@ -146,3 +146,13 @@ async def process_request(request):
                         }),
                     status=200)
 
+
+@app.route("/ping", methods=["GET"])
+async def process_request(request):
+    return response.json({
+            "requestId": -1, 
+            "type": "response",
+            "error": None,
+            "version": 5,
+            "data": "EFS up"},
+        status=200)
