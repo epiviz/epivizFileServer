@@ -5,6 +5,7 @@ from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasuremen
 from ..trackhub import TrackHub
 from ..parser import GtfParsedFile, TbxFile
 import ujson
+import requests
 
 class MeasurementManager(object):
     """
@@ -18,6 +19,7 @@ class MeasurementManager(object):
         # self.measurements = pd.DataFrame()
         self.genomes = {}
         self.measurements = []
+        self.emd_endpoint = None
 
     def import_dbm(self, dbConn):
         """Import measurements from a database.The database 
@@ -55,12 +57,24 @@ class MeasurementManager(object):
         Args: 
             fileSource: location of the configuration file to load
             fileHandler: an optional filehandler to use
+        """
+        with open(fileSource, 'r') as f:
+            json_string = f.read()
+
+        records = ujson.loads(json_string)
+        self.import_records(records, fileHandler=fileHandler, genome=genome)
+
+    def import_records(self, records, fileHandler=None, genome=None):
+        """Import measurements from a list of records (usually from a decoded json string)
+
+
+        Args: 
+            fileSource: location of the configuration json file to load
+            fileHandler: an optional filehandler to use
         """ 
-        json_data = open(fileSource, "r")
-        result = ujson.loads(json_data.read())
         measurements = []
 
-        for rec in result:
+        for rec in records:
             isGene = False
             if "annotation" in rec["datatype"]:
                 isGene = True
@@ -97,6 +111,48 @@ class MeasurementManager(object):
                 self.measurements.append(tempFile)
                 measurements.append(tempFile)
         return measurements
+
+    def get_from_emd(self, url=None):
+        """Make a GET request to a metadata api
+
+        Args:
+            url: the url of the epiviz-md api. If none the url on self.emd_endpoint is used if available (None) 
+
+        """
+        if url is None:
+            url = self.emd_endpoint
+
+        if url is None:
+            raise Exception("Error reading measurements from emd endpoint: missing url")
+
+
+        r = requests.get(url + "/ms/")
+        if r.status_code != 200:
+            raise Exception("Error importing measurements {}".format(r.text))
+        records = r.json()
+
+        # this is not elegant but... the epiviz-md api returns an 'id' which is the
+        # database id, we want the id of the record to be the 'measurement_id' as returned 
+        # by the epiviz-md api endpoint, so let's do that bit of surgery
+        for rec in records:
+            rec['id'] = rec.get('measurement_id')
+            del rec['measurement_id']
+
+        return records
+
+    def import_emd(self, url, fileHandler=None, listen=True):
+        """Import measurements from an epiviz-md metadata service api.
+
+        Args:
+            url: the url of the epiviz-md api
+            handler: an optional filehandler to use
+            listen: activate 'updateCollections' endpoint to add measurements from the service upon request
+        """
+        if listen:
+            self.emd_endpoint = url
+
+        records = self.get_from_emd(url)
+        self.import_records(records, fileHandler=fileHandler)
 
     def add_computed_measurement(self, mtype, mid, name, measurements, computeFunc, genome=None, annotation=None, metadata=None, computeAxis=1):
         """Add a Computed Measurement
@@ -185,7 +241,34 @@ class MeasurementManager(object):
         trackhub = TrackHub(hub)
         if handler is not None:
             for m in trackhub.measurments:
+                # TODO: this looks wrong
                 m.fileHandler = fileHandler
                 measurements.append(m)
         self.measurements.append(measurements)
         return measurements
+
+    def update_collections(self, handler=None):
+        result = []
+
+        if self.emd_endpoint is None:
+            return result, "Measurement manager is not listening"
+
+        try:
+            records = self.get_from_emd()
+        except Exception as e:
+            return result, "Error getting measurements from emd api {}".format(e)
+
+        current_measurement_ids = [ms.mid for ms in self.get_measurements()]
+        print(current_measurement_ids)
+        new_records = [rec for rec in records if rec.get('id') not in current_measurement_ids]
+
+        try:
+            self.import_records(new_records, fileHandler=handler)
+        except Exception as e:
+            return "", "Error inserting new measurements from emd api {}".format(e)
+
+        return new_records, ""
+        
+
+
+        

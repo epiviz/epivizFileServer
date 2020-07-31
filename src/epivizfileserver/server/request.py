@@ -279,3 +279,15 @@ class StatusRequest(EpivizRequest):
         except Exception as e:
             # print("failed in req get_data", str(e))
             return 0, str(err) + " --- " + str(e)
+
+class UpdateCollectionsRequest(EpivizRequest):
+    def __init__(self, request):
+        super(UpdateCollectionsRequest, self).__init__(request)
+
+    async def update_collections(self, mMgr):
+        result = []
+        err = None
+
+        # TODO: this should be async
+        result, err = mMgr.update_collections()
+        return result, str(err)
