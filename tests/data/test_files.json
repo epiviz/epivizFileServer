@@ -1,0 +1,35 @@
+[
+    {
+        "url": "./tests/data/test.bw",
+        "file_type": "bigwig",
+        "datatype": "bp",
+        "name": "test-bw",
+        "id": "test-bw",
+        "annotation": {
+            "file_type": "bigwig"
+        },
+        "metadata": []
+    }, {
+        "url": "./tests/data/test.bigBed",
+        "file_type": "bigbed",
+        "datatype": "bp",
+        "name": "test-bb",
+        "id": "test-bb",
+        "annotation": {
+            "file_type": "bigbed"
+        },
+        "metadata": []
+    }, {
+      "url": "http://egg2.wustl.edu/roadmap/data/byFileType/signal/consolidated/macs2signal/foldChange/E068-H3K4me3.fc.signal.bigwig",
+      "file_type": "bigwig",
+      "datatype": "bp",
+      "name": "Anterior Caudate H3K4me3",
+      "id": "Brain_Anterior_Caudate_H3K4me3",
+      "annotation": {
+        "source": "roadmap",
+        "type": "Brain_Anterior_Caudate",
+        "marker": "H3K4me3"
+      },
+      "metadata": []
+    }
+]
