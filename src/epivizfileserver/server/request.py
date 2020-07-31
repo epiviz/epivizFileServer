@@ -284,10 +284,10 @@ class UpdateCollectionsRequest(EpivizRequest):
     def __init__(self, request):
         super(UpdateCollectionsRequest, self).__init__(request)
 
-    async def update_collections(self, mMgr):
+    async def update_collections(self, mMgr, fileHandler):
         result = []
         err = None
 
         # TODO: this should be async
-        result, err = mMgr.update_collections()
+        result, err = mMgr.update_collections(handler=fileHandler)
         return result, str(err)

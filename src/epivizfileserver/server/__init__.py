@@ -174,7 +174,7 @@ async def process_request(request, datasource):
 @app.route("/updateCollections", methods=["POST"])
 async def process_request(request):
     epiviz_request = UpdateCollectionsRequest(request)
-    result, error = await epiviz_request.update_collections(request.app.epivizMeasurementsManager)
+    result, error = await epiviz_request.update_collections(request.app.epivizMeasurementsManager, request.app.epivizFileHandler)
     status_code = 201 if len(error) == 0 else 501
         
     return response.json({
