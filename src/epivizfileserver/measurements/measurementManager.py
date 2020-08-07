@@ -20,6 +20,11 @@ class MeasurementManager(object):
         self.genomes = {}
         self.measurements = []
         self.emd_endpoint = None
+        self.stats = {
+            "getRows": {},
+            "getValues": {},
+            "search": {}
+        }
 
     def import_dbm(self, dbConn):
         """Import measurements from a database.The database 
@@ -268,7 +273,3 @@ class MeasurementManager(object):
             return "", "Error inserting new measurements from emd api {}".format(e)
 
         return new_records, ""
-        
-
-
-        

@@ -53,4 +53,5 @@ env/*
 *.dirlock
 */dask-worker-space/*
 */.DS_Store
+.vscode/*
 

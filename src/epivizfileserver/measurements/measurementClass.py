@@ -8,6 +8,11 @@ from random import randrange
 # import umsgpack
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
+# import logging
+
+# logger = logging.getLogger(__name__)
+from sanic.log import logger as logging
+
 
 class Measurement(object):
     """
@@ -148,6 +153,8 @@ class Measurement(object):
         Returns:
             a binned data frame whose max rows is length
         """
+
+        logging.debug("Measurement: %s\t%s\t%s" %(self.mid, self.name, "bin_rows"))
         freq = round((end-start)/length)
         if end - start < length:
             freq = 1
@@ -315,7 +322,8 @@ class FileMeasurement(Measurement):
         """ 
         result = None
         err = None
-        
+        logging.debug("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_gene_search"))
+
         try:
             if self.fileHandler is None:
                 file = self.create_parser_object(self.mtype, self.source, self.columns)
@@ -325,6 +333,7 @@ class FileMeasurement(Measurement):
          
             return result, str(err)
         except Exception as e:
+            logging.error("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_gene_search"), exc_info=True)
             return {}, str(e)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
@@ -343,6 +352,8 @@ class FileMeasurement(Measurement):
         result = None
         err = None
         
+        logging.debug("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_data"))
+
         try:
             if self.fileHandler is None:
                 file = self.create_parser_object(self.mtype, self.source, self.columns)
@@ -370,11 +381,13 @@ class FileMeasurement(Measurement):
             
             return result, str(err)
         except Exception as e:
+            logging.error("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_data"), exc_info=True)
             return {}, str(e)
 
     async def get_status(self):
         result = 0
         err = None
+        logging.debug("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_status"))
 
         file = self.create_parser_object(self.mtype, self.source, self.columns)
         result, err = file.get_status()
@@ -437,6 +450,9 @@ class ComputedMeasurement(Measurement):
         Returns:
             a dataframe with results
         """ 
+        
+        logging.error("Computed Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_data"))
+        
         result = []
         err = None
         tbin = True
@@ -470,6 +486,7 @@ class ComputedMeasurement(Measurement):
                 # result[self.mid] = result.apply(self.computeWrapper(self.computeFunc, columns), axis=1)
             return result, str(err)
         except Exception as e:
+            logging.error("Computed Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_data"), exc_info=True)
             return {}, str(e)
 
 class WebServerMeasurement(Measurement):

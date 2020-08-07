@@ -9,6 +9,10 @@ import ujson
 import pandas as pd
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
+# import logging
+
+# logger = logging.getLogger(__name__)
+from sanic.log import logger as logging
 
 class FileHandlerProcess(object):
     """
@@ -80,6 +84,7 @@ class FileHandlerProcess(object):
     def cleanFileOBJ(self):
         """automated task to pickle all fileobjects to disk
         """
+        logging.debug("Handler: %s" %("cleanFileObj"))
         tasks = []
         for fileName, record in self.records.items():
             if datetime.now() - record.get("time") > timedelta(seconds = self.fileTime) and not record.get("pickled"):
@@ -92,6 +97,7 @@ class FileHandlerProcess(object):
         Args:
             fileName: file name to load
         """
+        logging.debug("Handler: %s\t%s" %(fileName,  "pickleFileObject"))
         record = self.records.get(fileName)
         record["pickling"] = True
         record["pickled"] = True
@@ -116,6 +122,7 @@ class FileHandlerProcess(object):
             end: genomic end
             points: number of base-pairse to group per bin
         """
+        logging.debug("Handler: %s\t%s" %(fileName,  "handleFile"))
         if self.records.get(fileName) == None:
             fileClass = create_parser_object(fileType, fileName)
             fileFuture = self.client.submit(fileClass, fileName, actor=True)
@@ -136,6 +143,7 @@ class FileHandlerProcess(object):
             start: genomic start
             end: genomic end
         """
+        logging.debug("Handler: %s\t%s" %(fileName, "handleSearch"))
 
         if self.records.get(fileName) == None:
             fileClass = create_parser_object(fileType, fileName)
@@ -150,6 +158,7 @@ class FileHandlerProcess(object):
     async def binFileData(self, fileName, data, chr, start, end, bins, columns, metadata):
         """submit tasks to the dask client
         """
+        logging.debug("Handler: %s\t%s" %(fileName,  "handleBinData"))
         fileObj = await self.getRecord(fileName)
         data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
         return data, err

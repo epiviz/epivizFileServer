@@ -4,7 +4,14 @@ import ujson
 import sys
 import os
 from ..handler import FileHandlerProcess
-import asyncio
+# import asyncio
+# import logging
+import time
+from math import fsum
+
+# logger = logging.getLogger(__name__)
+from sanic.log import logger as logging
+
 
 def create_request(action, request):
     """
@@ -179,22 +186,41 @@ class DataRequest(EpivizRequest):
         genomes = mMgr.get_genomes()
         result = None
         err = None
+        
+        logging.debug("Request GetData: %s\t%s" % (self.request.get("requestId"), "getRows"))
 
         try:
             if self.params.get("datasource") in genomes:
                 file = genomes[self.params.get("datasource")]
+                start = time.time()
                 result, err = await file.get_data(self.params.get("seqName"), 
                                     int(self.params.get("start")), 
                                     int(self.params.get("end")))
+
+                end = time.time()
+                if self.params.get("datasource") not in  mMgr.stats["getRows"]:
+                    mMgr.stats["getRows"][self.params.get("datasource")] = {"runtimes": [], "mean": None}
+
+                mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"].append(end-start)
+                mMgr.stats["getRows"][self.params.get("datasource")]["mean"] = fsum(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"]) / len(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"])
+
             else:
                 for rec in measurements:
                     if "getRows" in self.request.get("action"):
                         if rec.mid == self.params.get("datasource"):
+                            logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getRows"))
+                            start = time.time()
                             result, err = await rec.get_data(self.params.get("seqName"), 
                                         int(self.params.get("start")), 
                                         int(self.params.get("end")),
                                         self.request.get("bins")
                                     )
+                            end = time.time()
+                            if self.params.get("datasource") not in  mMgr.stats["getRows"]:
+                                mMgr.stats["getRows"][self.params.get("datasource")] =  {"runtimes": [], "mean": None}
+
+                            mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"].append(end-start)
+                            mMgr.stats["getRows"][self.params.get("datasource")]["mean"] = fsum(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"]) / len(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"])
                             break
                     else:
                         if rec.mid in self.params.get("measurement"):
@@ -203,21 +229,34 @@ class DataRequest(EpivizRequest):
                                 tbins = 400
                             else:
                                 tbins = int(self.request.get("bins"))
+
+                            logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getValues"))
+                            start = time.time()
                             result, err = await rec.get_data(self.params.get("seqName"), 
                                         int(self.params.get("start")), 
                                         int(self.params.get("end")),
                                         tbins
                                     )
+                            end = time.time()
+                            if self.params.get("measurement")[0] not in  mMgr.stats["getValues"]:
+                                mMgr.stats["getValues"][self.params.get("measurement")[0]] = {"runtimes": [], "mean": None}
+
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"].append(end-start)
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["mean"] = fsum(mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"]) / len(mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"])
+
                             break
             
             # result = result.to_json(orient='records')
-            result = utils.format_result(result, self.params)
+            if result is not None or len(result) != 0:
+                logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "format_result"))
+                result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
                 return result["rows"], err
             else:
                 return result, err
         except Exception as e:
             # print("failed in req get_data", str(e))
+            logging.error("Data Request: %s" % (self.params), exc_info=True)
             return utils.format_result(pd.DataFrame(columns = ["chr", "start", "end"]), self.params), str(err) + " --- " + str(e)
 
 class SearchRequest(EpivizRequest):
@@ -247,12 +286,19 @@ class SearchRequest(EpivizRequest):
         err = None
 
         try:
+            start = time.time()
             if self.params.get("genome") in genomes and len(self.params.get("q")) > 1:
                 file = genomes[self.params.get("genome")]
                 result, err = await file.searchGene(self.params.get("q"), self.params.get("maxResults"))
+            end = time.time()
+            if self.params.get("genome") not in  mMgr.stats["search"]:
+                mMgr.stats["search"][self.params.get("genome")] = {"runtimes": [], "mean": None}
 
+            mMgr.stats["search"][self.params.get("genome")]["runtimes"].append(end-start)   
+            mMgr.stats["search"][self.params.get("genome")]["mean"] =  fsum(mMgr.stats["search"][self.params.get("genome")]["runtimes"]) / len(mMgr.stats["search"][self.params.get("genome")]["runtimes"])
             return result, err
         except Exception as e:
+            logging.error("Search Request: %s" % (self.params.get("genome")), exc_info=True)
             return {}, str(e)
 
 class StatusRequest(EpivizRequest):
@@ -277,6 +323,7 @@ class StatusRequest(EpivizRequest):
                         break
             return result, err
         except Exception as e:
+            logging.error("Status Request: %s" % (self.datasource), exc_info=True)
             # print("failed in req get_data", str(e))
             return 0, str(err) + " --- " + str(e)
 

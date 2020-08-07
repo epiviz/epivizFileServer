@@ -1,5 +1,6 @@
 from sanic import Sanic, Blueprint, response
 from sanic.response import json
+from sanic.log import logger as logging
 from ..handler import FileHandlerProcess
 # import asyncio
 import ujson
@@ -7,11 +8,21 @@ from .request import create_request, StatusRequest, UpdateCollectionsRequest
 from sanic_cors import CORS, cross_origin
 import os
 import sys
+# import logging
+import time
 
 app = Sanic()
 CORS(app)
 fileTime = 4
 MAXWORKER = 10
+# logger = logging.getLogger(__name__)
+
+# logging.basicConfig(filename= os.getcwd() + 'efs.log', 
+#                 format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s',
+#                 level=logging.DEBUG)
+
+# for handler in logging.root.handlers[:]:
+#     logging.root.removeHandler(handler)
 
 """
 The server module allows users to instantly create a REST API from the list of measuremensts.
@@ -30,6 +41,7 @@ def setup_app(measurementsManager):
     global app
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
+    logging.info("Initialized App")
     return app
 
 def create_fileHandler():
@@ -47,7 +59,7 @@ async def schedulePickle():
         cleanQue = app.epivizFileHandler.cleanFileOBJ()
         for stuff in cleanQue:
             asyncio.ensure_future(stuff)
-        print('Server scheduled file OBJ cleaning!')
+        logging.info("Updating cache, pickle file objects")
 
 @app.listener('before_server_start')
 async def setup_connection(app, loop):
@@ -57,8 +69,8 @@ async def setup_connection(app, loop):
     for rec in app.epivizMeasurementsManager.get_measurements():
         if rec.datasource == "files" or rec.datasource == "computed":
             rec.fileHandler = app.epivizFileHandler
-    print("FileHandler created")
-    print('Server successfully started!')
+    logging.info("FileHandler created")
+    logging.info('Server successfully started!')
     # also create a folder caled cache
     if not os.path.exists(os.getcwd() + "/cache"):
         os.mkdir('cache')
@@ -66,6 +78,7 @@ async def setup_connection(app, loop):
 @app.listener('before_server_stop')
 def clean_up(app, loop):
     folder = os.getcwd() + "/cache/"
+    file_path = None
     for the_file in os.listdir(folder):
         file_path = os.path.join(folder, the_file)
     try:
@@ -74,11 +87,12 @@ def clean_up(app, loop):
         #elif os.path.isdir(file_path): shutil.rmtree(file_path)
     except Exception as e:
         print(e)
-    print("cache cleaned")
+    logging.info("cache cleaned")
 
 # async def clean_tasks(app, loop):
 #     for task in asyncio.Task.all_tasks():
 #         task.cancel()
+
 # app.add_task(schedulePickle())
 
 @app.route("/", methods=["POST", "OPTIONS", "GET"])
@@ -92,20 +106,18 @@ async def process_request(request):
     Returns:
         a JSON result
     """
-
+    
     param_action = request.args.get("action")
     param_id = request.args.get("requestId")
     version = request.args.get("version")
 
+    logging.debug("Request received: %s" %(request.args))
+    start = time.time()
     epiviz_request = create_request(param_action, request.args)
     result, error = await epiviz_request.get_data(request.app.epivizMeasurementsManager)
-    # return response.raw(umsgpack.packb({"requestId": int(param_id),
-    #                         "type": "response",
-    #                         "error": error,
-    #                         "data": result,
-    #                         "version": 5
-    #                     }),
-    #                 status=200)
+    logging.debug("Request total time: %s" %(time.time() - start))
+    logging.debug("Request processed: %s" %(param_id))
+
     return response.json({"requestId": int(param_id),
                             "type": "response",
                             "error": error,
@@ -138,24 +150,38 @@ async def process_request(request):
     elif type is "hub":
         request.app.epivizMeasurementsManager.import_trackhub(file, request.app.epivizFileHandler)
 
-    return response.raw(umsgpack.packb({"requestId": int(param_id),
+    return response.json({"requestId": int(param_id),
                             "type": "response",
                             "error": None,
                             "data": True,
                             "version": 5
-                        }),
+                        },
                     status=200)
 
 
 @app.route("/status", methods=["GET"])
 async def process_request(request):
+    # response = {
+    #     "requestId": -1, 
+    #     "type": "response",
+    #     "error": None,
+    #     "version": 5,
+    #     "data": {
+    #         "message": "EFS up",
+    #         "stats": request.app.epivizMeasurementsManager.stats
+    #     }
+    # }
+
     return response.json({
-            "requestId": -1, 
-            "type": "response",
-            "error": None,
-            "version": 5,
-            "data": "EFS up"},
-        status=200)
+        "requestId": -1, 
+        "type": "response",
+        "error": None,
+        "version": 5,
+        "data": {
+            "message": "EFS up",
+            "stats": request.app.epivizMeasurementsManager.stats
+        }
+    }, status=200)
 
 @app.route("/status/<datasource>", methods=["GET"])
 async def process_request(request, datasource):
@@ -163,13 +189,27 @@ async def process_request(request, datasource):
     result, error = await epiviz_request.get_status(request.app.epivizMeasurementsManager)
 
     result = "ok: {} bytes read".format(result) if result > 0 else "fail"
-    return response.json({
-            "requestId": -1,
-            "type": "response",
-            "error": error,
-            "version": 5,
-            "data": "check status of datasource " + datasource + ": " + result},
-        status=200)
+
+    response = {
+        "requestId": -1,
+        "type": "response",
+        "error": error,
+        "version": 5,
+        "data": {
+            "message": "check status of datasource " + datasource + ": " + result
+        }
+    }
+
+    if datasource in request.app.epivizMeasurementsManager.stats["getRows"]:
+        response["data"]["getRows"] = request.app.epivizMeasurementsManager.stats["getRows"]
+
+    if datasource in request.app.epivizMeasurementsManager.stats["getValues"]:
+        response["data"]["getValues"] = request.app.epivizMeasurementsManager.stats["getValues"]
+    
+    if datasource in request.app.epivizMeasurementsManager.stats["search"]:
+        response["data"]["search"] = request.app.epivizMeasurementsManager.stats["search"]
+
+    return response.json(response, status=200)
 
 @app.route("/updateCollections", methods=["POST"])
 async def process_request(request):
