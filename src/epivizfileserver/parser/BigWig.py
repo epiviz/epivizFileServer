@@ -164,6 +164,8 @@ class BigWig(BaseFile):
                 self.zooms = {}
                 zoomOffset = self.header.get("fullIndexOffset")
 
+            # if type(self).__name__ == "BigBed":
+            #     zoomlvl = -2
             # if not self.tree.get(str(zoomlvl)):
             #     self.sync = True
             #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
@@ -176,8 +178,8 @@ class BigWig(BaseFile):
                 # replace chrmId with chr
                 result["chr"] = chr
 
-            if self.sync:
-                return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
+            # if self.sync:
+            #     return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
             return result, None
         except Exception as e:
             return pd.DataFrame(columns = self.columns), str(e)

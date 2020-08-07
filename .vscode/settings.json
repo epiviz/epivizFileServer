@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "/Users/corradah/Projects/epiviz/src/efs-hcorrada/env/bin/python3.8",
+    "python.pythonPath": "/home/jayaram/miniconda3/envs/epivizfileserver/bin/python",
     "git.ignoreLimitWarning": true,
     "restructuredtext.confPath": "${workspaceFolder}/docs"
 }
