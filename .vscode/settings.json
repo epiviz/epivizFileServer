@@ -1,5 +1,0 @@
-{
-    "python.pythonPath": "/home/jayaram/miniconda3/envs/epivizfileserver/bin/python",
-    "git.ignoreLimitWarning": true,
-    "restructuredtext.confPath": "${workspaceFolder}/docs"
-}
