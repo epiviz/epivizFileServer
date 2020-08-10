@@ -4,12 +4,18 @@ import pickle
 from .utils import create_parser_object
 import os
 from datetime import datetime, timedelta
-from dask.distributed import Client
 import ujson
 import pandas as pd
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
 # import logging
+import dask
+from dask.distributed import Client
+
+dask.config.set({
+    'distributed.admin.tick.interval': '1000ms',
+    'distributed.worker.profile.interval': '1000ms'
+})
 
 # logger = logging.getLogger(__name__)
 from sanic.log import logger as logging
