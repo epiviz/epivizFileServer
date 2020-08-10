@@ -9,13 +9,13 @@ import pandas as pd
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
 # import logging
-import dask
+# import dask
 from dask.distributed import Client
 
-dask.config.set({
-    'distributed.admin.tick.interval': '1000ms',
-    'distributed.worker.profile.interval': '1000ms'
-})
+# dask.config.set({
+#     'distributed.admin.tick.interval': '1000ms',
+#     'distributed.worker.profile.interval': '1000ms'
+# })
 
 # logger = logging.getLogger(__name__)
 from sanic.log import logger as logging
