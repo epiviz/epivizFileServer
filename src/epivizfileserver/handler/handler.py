@@ -32,12 +32,14 @@ class FileHandlerProcess(object):
         records: a dictionary of all file objects
         client: asynchronous dask server client
     """
-    def __init__(self, fileTime, MAXWORKER):
+    def __init__(self, fileTime, MAXWORKER, client = None):
         self.records = {}
-        self.client = Client(asynchronous=True)
+        print("creating dask client")
+        self.client = client
+        # Client(asynchronous=True)
         self.fileTime = fileTime
         self.IDcount = 0
-        self.cache = Cache(Cache.MEMORY, serializer=PickleSerializer())
+        # self.cache = Cache(Cache.MEMORY, serializer=PickleSerializer())
         # self.futures = {}
     
 

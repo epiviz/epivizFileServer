@@ -1,5 +1,4 @@
-from sanic import Sanic, Blueprint, response
-from sanic.response import json
+from sanic import Sanic, response
 from sanic.log import logger as logging
 from ..handler import FileHandlerProcess
 # import asyncio
@@ -8,10 +7,14 @@ from .request import create_request, StatusRequest, UpdateCollectionsRequest
 from sanic_cors import CORS, cross_origin
 import os
 import sys
+import asyncio
+from tornado.platform.asyncio import BaseAsyncIOLoop, to_asyncio_future
+from dask.distributed import Client
 # import logging
 import time
+import traceback
 
-app = Sanic()
+app = Sanic(__name__)
 CORS(app)
 fileTime = 4
 MAXWORKER = 10
@@ -41,7 +44,8 @@ def setup_app(measurementsManager):
     global app
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
-    logging.info("Initialized App")
+    logging.info("Initialized Setup App")
+    traceback.print_stack()
     return app
 
 def create_fileHandler():
@@ -65,29 +69,57 @@ async def schedulePickle():
 async def setup_connection(app, loop):
     """Sanic callback for app setup before the server starts
     """
-    app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
-    for rec in app.epivizMeasurementsManager.get_measurements():
-        if rec.datasource == "files" or rec.datasource == "computed":
-            rec.fileHandler = app.epivizFileHandler
-    logging.info("FileHandler created")
+    # app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
+    # for rec in app.epivizMeasurementsManager.get_measurements():
+    #     if rec.datasource == "files" or rec.datasource == "computed":
+    #         rec.fileHandler = app.epivizFileHandler
     logging.info('Server successfully started!')
     # also create a folder caled cache
     if not os.path.exists(os.getcwd() + "/cache"):
         os.mkdir('cache')
 
+@app.listener('after_server_start')
+async def setup_after_connection(app, loop):
+    logging.info("after server start")
+    # configure tornado use asyncio's loop
+    ioloop = BaseAsyncIOLoop(loop)
+    logging.info("after ioloop")
+    # ioloop = asyncio.get_running_loop()
+
+    # init distributed client
+    # cluster = LocalCluster(asynchronous=True, scheduler_port=8786, nanny=False, n_workers=2, 
+    #         threads_per_worker=1)
+    app.client = await Client(asynchronous=True, nanny=False, loop=ioloop)
+    print(app.client)
+    logging.info("setup client")
+    app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
+    app.epivizFileHandler.client = app.client
+    for rec in app.epivizMeasurementsManager.get_measurements():
+        if rec.datasource == "files" or rec.datasource == "computed":
+            rec.fileHandler = app.epivizFileHandler
+    logging.info("FileHandler created")
+    logging.info("starting client")
+    # await to_asyncio_future(app.client._start())
+
 @app.listener('before_server_stop')
-def clean_up(app, loop):
+async def clean_up(app, loop):
     folder = os.getcwd() + "/cache/"
     file_path = None
+
+    logging.info("cache cleaned")
+
     for the_file in os.listdir(folder):
         file_path = os.path.join(folder, the_file)
     try:
         if os.path.isfile(file_path):
             os.unlink(file_path)
         #elif os.path.isdir(file_path): shutil.rmtree(file_path)
+        # await to_asyncio_future(app.client._shutdown())
+        await app.client.close()
+
     except Exception as e:
         print(e)
-    logging.info("cache cleaned")
+        # await to_asyncio_future(app.client._shutdown())
 
 # async def clean_tasks(app, loop):
 #     for task in asyncio.Task.all_tasks():
