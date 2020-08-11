@@ -122,6 +122,10 @@ def format_result(input, params, offset=True):
         if params.get("metadata") is not None:
             for met in params.get("metadata"):
                 data["rows"]["values"]["metadata"][met] = []
+
+        if params.get("measurement"):
+            for col in params.get("measurement"):
+                data["values"]["values"][col] = []
         # else:
         #     data["rows"]["values"]["metadata"] = None
 

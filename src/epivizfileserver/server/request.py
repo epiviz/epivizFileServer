@@ -199,11 +199,11 @@ class DataRequest(EpivizRequest):
 
                 end = time.time()
                 if self.params.get("datasource") not in  mMgr.stats["getRows"]:
-                    mMgr.stats["getRows"][self.params.get("datasource")] = {"runtimes": [], "mean": None}
+                    mMgr.stats["getRows"][self.params.get("datasource")] = {"sum": 0, "count": 0, "sumSquares": 0}
 
-                mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"].append(end-start)
-                mMgr.stats["getRows"][self.params.get("datasource")]["mean"] = fsum(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"]) / len(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"])
-
+                mMgr.stats["getRows"][self.params.get("datasource")]["sum"] += (end-start)
+                mMgr.stats["getRows"][self.params.get("datasource")]["count"] += 1
+                mMgr.stats["getRows"][self.params.get("datasource")]["sumSquares"] += ((end-start) ** 2)
             else:
                 for rec in measurements:
                     if "getRows" in self.request.get("action"):
@@ -217,10 +217,11 @@ class DataRequest(EpivizRequest):
                                     )
                             end = time.time()
                             if self.params.get("datasource") not in  mMgr.stats["getRows"]:
-                                mMgr.stats["getRows"][self.params.get("datasource")] =  {"runtimes": [], "mean": None}
+                                mMgr.stats["getRows"][self.params.get("datasource")] = {"sum": 0, "count": 0, "sumSquares": 0}
 
-                            mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"].append(end-start)
-                            mMgr.stats["getRows"][self.params.get("datasource")]["mean"] = fsum(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"]) / len(mMgr.stats["getRows"][self.params.get("datasource")]["runtimes"])
+                            mMgr.stats["getRows"][self.params.get("datasource")]["sum"] += (end-start)
+                            mMgr.stats["getRows"][self.params.get("datasource")]["count"] += 1
+                            mMgr.stats["getRows"][self.params.get("datasource")]["sumSquares"] += ((end-start) ** 2)
                             break
                     else:
                         if rec.mid in self.params.get("measurement"):
@@ -239,11 +240,11 @@ class DataRequest(EpivizRequest):
                                     )
                             end = time.time()
                             if self.params.get("measurement")[0] not in  mMgr.stats["getValues"]:
-                                mMgr.stats["getValues"][self.params.get("measurement")[0]] = {"runtimes": [], "mean": None}
+                                mMgr.stats["getValues"][self.params.get("measurement")[0]] = {"sum": 0, "count": 0, "sumSquares": 0}
 
-                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"].append(end-start)
-                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["mean"] = fsum(mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"]) / len(mMgr.stats["getValues"][self.params.get("measurement")[0]]["runtimes"])
-
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["sum"] += (end-start)
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["count"] += 1
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["sumSquares"] += ((end-start) ** 2)
                             break
             
             # result = result.to_json(orient='records')
@@ -292,10 +293,11 @@ class SearchRequest(EpivizRequest):
                 result, err = await file.searchGene(self.params.get("q"), self.params.get("maxResults"))
             end = time.time()
             if self.params.get("genome") not in  mMgr.stats["search"]:
-                mMgr.stats["search"][self.params.get("genome")] = {"runtimes": [], "mean": None}
+                mMgr.stats["search"][self.params.get("genome")] = {"sum": 0, "count": 0, "sumSquares": 0}
 
-            mMgr.stats["search"][self.params.get("genome")]["runtimes"].append(end-start)   
-            mMgr.stats["search"][self.params.get("genome")]["mean"] =  fsum(mMgr.stats["search"][self.params.get("genome")]["runtimes"]) / len(mMgr.stats["search"][self.params.get("genome")]["runtimes"])
+            mMgr.stats["search"][self.params.get("genome")]["sum"] += (end-start)
+            mMgr.stats["search"][self.params.get("genome")]["count"] += 1
+            mMgr.stats["search"][self.params.get("genome")]["sumSquares"] += ((end-start) ** 2)
             return result, err
         except Exception as e:
             logging.error("Search Request: %s" % (self.params.get("genome")), exc_info=True)

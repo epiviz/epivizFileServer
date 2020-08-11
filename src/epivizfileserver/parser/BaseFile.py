@@ -123,6 +123,10 @@ class BaseFile(object):
     def bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):
         """Bin genome by bin length and summarize the bin
         """
+
+        if len(data) == 0: 
+            return data, None
+
         freq = round((end-start)/bins)
         if end - start < bins:
             freq = 1

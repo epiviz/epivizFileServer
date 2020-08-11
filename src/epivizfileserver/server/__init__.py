@@ -190,7 +190,7 @@ async def process_request(request, datasource):
 
     result = "ok: {} bytes read".format(result) if result > 0 else "fail"
 
-    response = {
+    res = {
         "requestId": -1,
         "type": "response",
         "error": error,
@@ -201,15 +201,24 @@ async def process_request(request, datasource):
     }
 
     if datasource in request.app.epivizMeasurementsManager.stats["getRows"]:
-        response["data"]["getRows"] = request.app.epivizMeasurementsManager.stats["getRows"]
+        data = request.app.epivizMeasurementsManager.stats["getRows"][datasource]
+        res["data"]["getRows"] = data
+        mean = data["sum"] / data["count"]
+        res["data"]["SD"] = (data["sumSquares"] + (data["count"] * (mean ** 2)) - 2 * mean * data["sum"])/data["count"]
 
     if datasource in request.app.epivizMeasurementsManager.stats["getValues"]:
-        response["data"]["getValues"] = request.app.epivizMeasurementsManager.stats["getValues"]
+        data = request.app.epivizMeasurementsManager.stats["getValues"][datasource]
+        res["data"]["getValues"] = data
+        mean = data["sum"] / data["count"]
+        res["data"]["SD"] = (data["sumSquares"] + (data["count"] * (mean ** 2)) - 2 * mean * data["sum"])/data["count"]
     
     if datasource in request.app.epivizMeasurementsManager.stats["search"]:
-        response["data"]["search"] = request.app.epivizMeasurementsManager.stats["search"]
+        data = request.app.epivizMeasurementsManager.stats["search"][datasource]
+        res["data"]["search"] = data
+        mean = data["sum"] / data["count"]
+        res["data"]["SD"] = (data["sumSquares"] + (data["count"] * (mean ** 2)) - 2 * mean * data["sum"])/data["count"]
 
-    return response.json(response, status=200)
+    return response.json(res, status=200)
 
 @app.route("/updateCollections", methods=["POST"])
 async def process_request(request):

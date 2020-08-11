@@ -4,6 +4,7 @@ import zlib
 import os
 import math
 from .utils import toDataFrame
+import pandas as pd
 
 class BigWig(BaseFile):
     """
@@ -155,6 +156,8 @@ class BigWig(BaseFile):
         if bins is None:
             bins = 2000
 
+        result = pd.DataFrame(columns = self.columns)
+
         try:
             bins = (end - start) if bins > (end - start) else bins
             # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
@@ -182,7 +185,7 @@ class BigWig(BaseFile):
             #     return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
             return result, None
         except Exception as e:
-            return pd.DataFrame(columns = self.columns), str(e)
+            return result, str(e)
 
     # a note on zoom levels: 0 to totalLevels are the regular zoom level index
     # -2 for using fullDataOffset

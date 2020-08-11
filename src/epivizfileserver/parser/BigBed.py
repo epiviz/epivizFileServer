@@ -2,6 +2,7 @@ from .BigWig import BigWig
 import struct
 import zlib
 import math
+import pandas as pd
 
 class BigBed(BigWig):
     """
