@@ -45,7 +45,7 @@ def setup_app(measurementsManager):
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
     logging.info("Initialized Setup App")
-    traceback.print_stack()
+    # traceback.print_stack()
     return app
 
 def create_fileHandler():
