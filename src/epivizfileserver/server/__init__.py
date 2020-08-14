@@ -32,7 +32,7 @@ The server module allows users to instantly create a REST API from the list of m
 The API can then be used to interactive exploration of data or build various applications.
 """
 
-def setup_app(measurementsManager):
+def setup_app(measurementsManager, dask_scheduler = None):
     """Setup the Sanic Rest API
 
     Args: 
@@ -41,10 +41,11 @@ def setup_app(measurementsManager):
     Returns:
         a sanic app object
     """
-    print("This is a test")
+    print("This is a testpip")
     global app
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
+    app.dask_scheduler = dask_scheduler
     logging.info("Initialized Setup App")
     # traceback.print_stack()
     return app
@@ -75,7 +76,7 @@ async def setup_connection(app, loop):
     #     if rec.datasource == "files" or rec.datasource == "computed":
     #         rec.fileHandler = app.epivizFileHandler
     logging.info('Server successfully started!')
-    # also create a folder caled cache
+    # also create a cache folder
     if not os.path.exists(os.getcwd() + "/cache"):
         os.mkdir('cache')
 
@@ -90,7 +91,7 @@ async def setup_after_connection(app, loop):
     # init distributed client
     # cluster = LocalCluster(asynchronous=True, scheduler_port=8786, nanny=False, n_workers=2, 
     #         threads_per_worker=1)
-    app.client = await Client(asynchronous=True, nanny=False, loop=ioloop)
+    app.client = await Client(address=app.dask_scheduler, asynchronous=True, nanny=False, loop=ioloop)
     print(app.client)
     logging.info("setup client")
     app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
