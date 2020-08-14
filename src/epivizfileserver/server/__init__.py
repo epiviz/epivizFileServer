@@ -95,7 +95,7 @@ async def setup_after_connection(app, loop):
     if app.dask_scheduler is None:
         app.client = await Client(asynchronous=True, nanny=False, loop=ioloop)
     else:
-        app.client = await Client(address = app.dask_scheduler)
+        app.client = await Client(address = app.dask_scheduler, asynchronous=True)
         
     print(app.client)
     logging.info("setup client")
