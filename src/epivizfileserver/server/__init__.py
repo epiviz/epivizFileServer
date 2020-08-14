@@ -91,6 +91,7 @@ async def setup_after_connection(app, loop):
     # init distributed client
     # cluster = LocalCluster(asynchronous=True, scheduler_port=8786, nanny=False, n_workers=2, 
     #         threads_per_worker=1)
+    logging.info("setting up dask client with scheduler", app.dask_scheduler)
     app.client = await Client(address=app.dask_scheduler, asynchronous=True, nanny=False, loop=ioloop)
     print(app.client)
     logging.info("setup client")
