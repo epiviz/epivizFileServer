@@ -41,6 +41,7 @@ def setup_app(measurementsManager):
     Returns:
         a sanic app object
     """
+    print("This is a test")
     global app
     app.epivizMeasurementsManager = measurementsManager
     app.epivizFileHandler = None
