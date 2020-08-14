@@ -92,7 +92,11 @@ async def setup_after_connection(app, loop):
     # cluster = LocalCluster(asynchronous=True, scheduler_port=8786, nanny=False, n_workers=2, 
     #         threads_per_worker=1)
     logging.info("setting up dask client with scheduler", app.dask_scheduler)
-    app.client = await Client(address=app.dask_scheduler, asynchronous=True, nanny=False, loop=ioloop)
+    if app.dask_scheduler is None:
+        app.client = await Client(asynchronous=True, nanny=False, loop=ioloop)
+    else:
+        app.client = await Client(address = app.dask_scheduler)
+        
     print(app.client)
     logging.info("setup client")
     app.epivizFileHandler = FileHandlerProcess(fileTime, MAXWORKER)
