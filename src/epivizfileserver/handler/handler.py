@@ -117,6 +117,15 @@ class FileHandlerProcess(object):
         filehandler.close()
         record["pickling"] = False
         record["fileObj"] = None
+    
+    async def get_file_object(self, fileName, fileType):
+        if self.records.get(fileName) == None:
+            fileClass = create_parser_object(fileType, fileName)
+            fileFuture = self.client.submit(fileClass, fileName, actor=True)
+            fileObj = await self.client.gather(fileFuture)
+            self.setRecord(fileName, fileObj, fileType)
+        fileObj = await self.getRecord(fileName)
+        return fileObj
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlefile")
     async def handleFile(self, fileName, fileType, chr, start, end, bins = 2000):
@@ -131,13 +140,14 @@ class FileHandlerProcess(object):
             points: number of base-pairse to group per bin
         """
         logging.debug("Handler: %s\t%s" %(fileName,  "handleFile"))
-        if self.records.get(fileName) == None:
-            fileClass = create_parser_object(fileType, fileName)
-            fileFuture = self.client.submit(fileClass, fileName, actor=True)
-            fileObj = await self.client.gather(fileFuture)
-            self.setRecord(fileName, fileObj, fileType)
-        fileObj = await self.getRecord(fileName)
-        data, err = await fileObj.getRange(chr, start, end, bins)
+        fileObj = await self.get_file_object(fileName, fileType)
+        try:
+            data, err = await fileObj.getRange(chr, start, end, bins)
+        except Exception as e:
+            # assuming worker is no longer available, retry
+            del self.records[fileName]
+            fileObj = await self.get_file_object(fileName, fileType)
+            data, err = await fileObj.getRange(chr, start, end, bins)
         return data, err
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="handlesearch")
@@ -152,14 +162,14 @@ class FileHandlerProcess(object):
             end: genomic end
         """
         logging.debug("Handler: %s\t%s" %(fileName, "handleSearch"))
-
-        if self.records.get(fileName) == None:
-            fileClass = create_parser_object(fileType, fileName)
-            fileFuture = self.client.submit(fileClass, fileName, actor=True)
-            fileObj = await self.client.gather(fileFuture)
-            self.setRecord(fileName, fileObj, fileType)
-        fileObj = await self.getRecord(fileName)
-        data, err = await fileObj.search_gene(query, maxResults)
+        fileObj = await self.get_file_object(fileName, fileType)
+        try:
+            data, err = await fileObj.search_gene(query, maxResults)
+        except Exception as e:
+            # assuming worker is no longer available, retry
+            del self.records[fileName]
+            fileObj = await self.get_file_object(fileName, fileType)
+            data, err = await fileObj.search_gene(query, maxResults)
         return data, err
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
@@ -167,6 +177,12 @@ class FileHandlerProcess(object):
         """submit tasks to the dask client
         """
         logging.debug("Handler: %s\t%s" %(fileName,  "handleBinData"))
-        fileObj = await self.getRecord(fileName)
-        data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
+        fileObj = await self.get_file_object(fileName, fileType)
+        try:
+            data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
+        except Exception as e:
+            # assuming worker is no longer available, retry
+            del self.records[fileName]
+            fileObj = await self.get_file_object(fileName, fileType)
+            data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
         return data, err
