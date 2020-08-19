@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta
 import ujson
 import pandas as pd
+import numpy as np
+import math
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
 # import logging
@@ -19,6 +21,22 @@ from dask.distributed import Client
 
 # logger = logging.getLogger(__name__)
 from sanic.log import logger as logging
+
+def bin_rows(data, chr, start, end, columns=None, metadata=None, bins = 400):
+    if len(data) == 0 or len(data) <= math.ceil(bins * 1.1): 
+        return data, None
+
+    chunks = np.array_split(data, bins)
+    rows = []
+    for chunk in chunks:
+        temp = {}
+        temp["start"] = chunk["start"].values[0]
+        temp["end"] = chunk["end"].values[len(chunk) - 1]
+        for col in columns:
+            temp[col] = chunk[col].mean()
+        rows.append(temp)
+    
+    return pd.DataFrame(rows), None
 
 class FileHandlerProcess(object):
     """
@@ -173,16 +191,10 @@ class FileHandlerProcess(object):
         return data, err
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="binfile")
-    async def binFileData(self, fileName, data, chr, start, end, bins, columns, metadata):
+    async def binFileData(self, fileName, fileType, data, chr, start, end, bins, columns, metadata):
         """submit tasks to the dask client
         """
         logging.debug("Handler: %s\t%s" %(fileName,  "handleBinData"))
-        fileObj = await self.get_file_object(fileName, fileType)
-        try:
-            data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
-        except Exception as e:
-            # assuming worker is no longer available, retry
-            del self.records[fileName]
-            fileObj = await self.get_file_object(fileName, fileType)
-            data, err = await fileObj.bin_rows(data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
+        fileFuture = self.client.submit(bin_rows, data, chr, start, end, columns=columns, metadata=metadata, bins=bins)
+        data, err = await self.client.gather(fileFuture)
         return data, err

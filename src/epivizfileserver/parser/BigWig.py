@@ -159,30 +159,21 @@ class BigWig(BaseFile):
         result = pd.DataFrame(columns = self.columns)
 
         try:
-            bins = (end - start) if bins > (end - start) else bins
-            # basesPerBin = (end - start)*1.0/bins if zoomlvl is -1 else 0
+            if bins is None:
+                bins = (end - start) if bins > (end - start) else bins
+                
             if zoomlvl != -2:
                 zoomlvl, zoomOffset = self.getZoom(zoomlvl, (end - start) / bins)
             else:
                 self.zooms = {}
                 zoomOffset = self.header.get("fullIndexOffset")
 
-            # if type(self).__name__ == "BigBed":
-            #     zoomlvl = -2
-            # if not self.tree.get(str(zoomlvl)):
-            #     self.sync = True
-            #     self.tree[str(zoomlvl)] = self.getTree(zoomlvl)
-
             values = self.getValues(chr, start, end, zoomlvl)
 
-            # result = values
             if respType is "DataFrame":
                 result = toDataFrame(values, self.columns)
-                # replace chrmId with chr
                 result["chr"] = chr
 
-            # if self.sync:
-            #     return result, {"zooms": self.zooms, "chrmIds": self.chrmIds, "tree": self.tree, "cacheData": self.cacheData}
             return result, None
         except Exception as e:
             return result, str(e)

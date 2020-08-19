@@ -337,7 +337,7 @@ class FileMeasurement(Measurement):
             return {}, str(e)
 
     @cached(ttl=None, cache=Cache.MEMORY, serializer=PickleSerializer(), namespace="filegetdata")
-    async def get_data(self, chr, start, end, bins, bin=False):
+    async def get_data(self, chr, start, end, bins, bin=True):
         """Get data for a genomic region from file
 
         Args: 
@@ -360,7 +360,6 @@ class FileMeasurement(Measurement):
                 result, err = file.getRange(chr, start, end, bins=bins)
             else:
                 result, err = await self.fileHandler.handleFile(self.source, self.mtype, chr, start, end, bins=bins)
-            # result = pd.DataFrame(result, columns = ["chr", "start", "end", self.mid])   
 
             # rename columns from score to mid for BigWigs
             if self.mtype in ["BigWig", "bigwig", "bw", "bigWig"]:
@@ -368,15 +367,11 @@ class FileMeasurement(Measurement):
             elif self.mtype in ['Tabix', 'tabix', 'tbx'] and not self.isGenes:
                 result.columns = ["chr", "start", "end"].extend(self.columns)
                 cols = ["chr", "start", "end"]
-                # if self.metadata:
-                #     cols.extend(self.metadata)
                 cols.append(self.mid)
                 result = result[cols]   
 
             if bin and not self.isGenes: 
-                # json = ujson.dumps(result.to_json())
-                # result = self.bin_rows(result, chr, start, end)
-                result, err = await self.fileHandler.binFileData(self.source, result, chr, start, end, 
+                result, err = await self.fileHandler.binFileData(self.source, self.mtype, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
             
             return result, str(err)
