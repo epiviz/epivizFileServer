@@ -45,19 +45,11 @@ def format_result(input, params, offset=True):
     Returns:
         formatted JSON response
     """  
-    # measurement = params.get("measurement")[0]
-    # input_json = []
-    # for item in input_data:
-    #     input_json.append({"chr":item[0],  "start": item[1], "end": item[2], measurement: item[3]})
-    # input = pandas.read_json(ujson.dumps(input_json), orient="records")
-    # input = input.drop_duplicates()
-    input.start = input.start.astype("float")
-    input.end = input.end.astype("float")
-    # input[measurement] = input[measurement].astype("float")
-    # input["chr"] = params.get("seqName")
 
-    # input = bin_rows(input)
-    # input = pandas.DataFrame(input_data, columns = ["start", "end", measurement])
+    if len(input) > 0:
+        input.start = input.start.astype("float")
+        input.end = input.end.astype("float")
+    
     globalStartIndex = None
 
     data = {
@@ -77,6 +69,9 @@ def format_result(input, params, offset=True):
         }
     }
 
+    col_names = input.columns.values.tolist()
+    row_names = ["chr", "start", "end", "strand", "id"]
+
     if len(input) > 0:
         globalStartIndex = input["start"].values.min()
         
@@ -88,8 +83,6 @@ def format_result(input, params, offset=True):
             input["start"].iloc[0] = minStart
             input["end"].iloc[0] = minEnd
 
-        col_names = input.columns.values.tolist()
-        row_names = ["chr", "start", "end", "strand", "id"]
 
         data = {
             "rows": {
@@ -122,17 +115,20 @@ def format_result(input, params, offset=True):
         if params.get("metadata") is not None:
             for met in params.get("metadata"):
                 data["rows"]["values"]["metadata"][met] = []
+        else:
+            for col in col_names:
+                if params.get("measurement") is not None and col in params.get("measurement"):
+                    data["values"]["values"][col] = input[col].values.tolist()
+                elif col in row_names:
+                    data["rows"]["values"][col] = input[col].values.tolist()
+                else:
+                    data["rows"]["values"]["metadata"][col] = input[col].values.tolist()
 
         if params.get("measurement"):
             for col in params.get("measurement"):
                 data["values"]["values"][col] = []
-        # else:
-        #     data["rows"]["values"]["metadata"] = None
 
     data["rows"]["values"]["id"] = None
-
-    # if params.get("datasource") != "genes":
-    #     data["rows"]["values"]["strand"] = None
 
     return data
 

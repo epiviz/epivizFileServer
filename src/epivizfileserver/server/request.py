@@ -248,7 +248,7 @@ class DataRequest(EpivizRequest):
                             break
             
             # result = result.to_json(orient='records')
-            if result is not None or len(result) != 0:
+            if result is not None :
                 logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "format_result"))
                 result = utils.format_result(result, self.params)
             if self.request.get("action") == "getRows":
