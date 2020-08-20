@@ -11,32 +11,25 @@ import math
 from aiocache import cached, Cache
 from aiocache.serializers import JsonSerializer, PickleSerializer
 # import logging
-# import dask
 from dask.distributed import Client
-
-# dask.config.set({
-#     'distributed.admin.tick.interval': '1000ms',
-#     'distributed.worker.profile.interval': '1000ms'
-# })
 
 # logger = logging.getLogger(__name__)
 from sanic.log import logger as logging
 
 def bin_rows(data, chr, start, end, columns=None, metadata=None, bins = 400):
-    if len(data) == 0 or len(data) <= math.ceil(bins * 1.1): 
+    if len(data) == 0 or len(data) <= bins: 
         return data, None
 
-    chunks = np.array_split(data, bins)
-    rows = []
-    for chunk in chunks:
-        temp = {}
-        temp["start"] = chunk["start"].values[0]
-        temp["end"] = chunk["end"].values[len(chunk) - 1]
-        for col in columns:
-            temp[col] = chunk[col].mean()
-        rows.append(temp)
+    row_cut = pd.cut(data.index, bins=bins)
+    rows = {}
+
+    groups = data.groupby(row_cut)
+    rows["start"] = groups["start"].first()
+    rows["end"] = groups["end"].last()
+    for col in columns:
+        rows[col] = groups[col].mean()
     
-    return pd.DataFrame(rows), None
+    return pd.DataFrame.from_dict(rows), None
 
 class FileHandlerProcess(object):
     """
