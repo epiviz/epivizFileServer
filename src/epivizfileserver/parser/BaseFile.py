@@ -140,7 +140,7 @@ class BaseFile(object):
             if not hasattr(self, 'conn') or self.conn is None:
                 self.parse_url()
 
-            resp = requests.get(self.file, headers=headers)
+            resp = self.conn.get(self.file, headers=headers)
             if resp.status_code != 206:
                 raise Exception("URLError")
 
@@ -181,6 +181,22 @@ class BaseFile(object):
         bins_df["start"] = bins_df.index.left
         bins_df["end"] = bins_df.index.right
         return bins_df, None
+
+    def simplified_bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):
+        if len(data) == 0 or len(data) <= bins: 
+            return data, None
+
+        chunks = np.array_split(data, bins)
+        rows = []
+        columns = ["score"]
+        for chunk in chunks:
+            temp = {}
+            temp["start"] = chunk["start"].values[0]
+            temp["end"] = chunk["end"].values[len(chunk) - 1]
+            for col in columns:
+                temp[col] = chunk[col].mean()
+        
+        return pd.DataFrame(data), None
 
     def get_status(self):
         res = self.get_bytes(0, 64)
