@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from urllib.parse import urlparse
 import http
+import requests
 
 class BaseFile(object):
     """
@@ -34,6 +35,9 @@ class BaseFile(object):
         self.endian = "="
         self.compressed = True
         self.conn = None
+        self.stats = {
+            "iotime"
+        }
 
     def is_local(self, file):
         """Checks if file is local or hosted publicly
@@ -73,7 +77,7 @@ class BaseFile(object):
         """
         return ujson.dumps(data)
 
-    def parse_url(self, furl=None):
+    def parse_url_http(self, furl=None):
         if furl is None:
             furl = self.file
         self.fuparse = urlparse(furl)
@@ -81,6 +85,38 @@ class BaseFile(object):
             self.conn = http.client.HTTPConnection(self.fuparse.netloc)
         elif self.fuparse.scheme in ["ftps", "https"]:
             self.conn = http.client.HTTPSConnection(self.fuparse.netloc)
+
+    def parse_url(self, furl=None):
+        self.conn = requests.Session()
+
+    def get_bytes_http(self, offset, size):
+        if self.local:
+            f = open(self.file, "rb")
+            f.seek(offset)
+            bin_value = f.read(size)
+            f.close()
+            return bin_value
+        else:
+            headers = {"Range": "bytes=%d-%d" % (offset, offset+size) }
+
+            if not hasattr(self, 'conn') or self.conn is None:
+                self.parse_url_http()
+
+            # if connection is disconnect, reconnect
+            self.conn.connect()
+            self.conn.request("GET", url=self.fuparse.path, headers=headers)
+            response = self.conn.getresponse()
+            if response.status == 302:
+                # connection redirected and found resource - usually https
+                new_loc = response.getheader("Location")
+                # print("url redirected & found ", new_loc)
+                self.parse_url(new_loc)    
+                self.conn.request("GET", url=self.fuparse.path, headers=headers)
+                response = self.conn.getresponse()    
+                resp = response.read()    
+            else:
+                resp = response.read()
+            return resp[:size]       
 
     def get_bytes(self, offset, size):
         """Get bytes within a given range
@@ -104,21 +140,11 @@ class BaseFile(object):
             if not hasattr(self, 'conn') or self.conn is None:
                 self.parse_url()
 
-            # if connection is disconnect, reconnect
-            self.conn.connect()
-            self.conn.request("GET", url=self.fuparse.path, headers=headers)
-            response = self.conn.getresponse()
-            if response.status == 302:
-                # connection redirected and found resource - usually https
-                new_loc = response.getheader("Location")
-                # print("url redirected & found ", new_loc)
-                self.parse_url(new_loc)    
-                self.conn.request("GET", url=self.fuparse.path, headers=headers)
-                response = self.conn.getresponse()    
-                resp = response.read()    
-            else:
-                resp = response.read()
-            return resp[:size]
+            resp = requests.get(self.file, headers=headers)
+            if resp.status_code != 206:
+                raise Exception("URLError")
+
+            return resp.content[:size]
 
     def bin_rows(self, data, chr, start, end, columns=None, metadata=None, bins = 400):
         """Bin genome by bin length and summarize the bin
