@@ -47,9 +47,10 @@ class BigWig(BaseFile):
     def getHeader(self):
         """get header byte region in file
         """
-        data = self.get_bytes(0, 64)
+        data = self.get_bytes(0, 1024)
 
-        magicd = data[0:4]
+        header = data[0:64]
+        magicd = header[0:4]
         # parse magic code for byteswap
         if struct.unpack("I", magicd)[0] == int(self.__class__.magic, 0):
             self.endian = "="
@@ -58,15 +59,18 @@ class BigWig(BaseFile):
         else:
             raise Exception("BadFileError")
 
-        self.header = self.parse_header(data[0:56])
+        self.header = self.parse_header(header[0:56])
 
         # self.headerExtra = self.get_bytes(64, (self.header.zoomLevels * 64) + )
-        data = self.get_bytes(64, self.header.get("fullDataOffset") - 64)
+        if self.header.get("fullDataOffset") < 1024:
+            addHeader = data[64: self.header.get("fullDataOffset") - 64]
+        else:
+            addHeader = self.get_bytes(64, self.header.get("fullDataOffset") - 64)
 
-        self.zoomBin = data[0:self.header.get("zoomLevels") * 24]
+        self.zoomBin = addHeader[0:self.header.get("zoomLevels") * 24]
         # self.getZoom(3, 1)
 
-        self.chromTreeBin = data[len(data) - (self.header.get("fullDataOffset") - self.header.get("chromTreeOffset")):]
+        self.chromTreeBin = data[self.header.get("chromTreeOffset"):self.header.get("fullDataOffset")]
         # self.getId("chr11")
 
         if self.columns is None:
@@ -167,7 +171,7 @@ class BigWig(BaseFile):
             else:
                 self.zooms = {}
                 zoomOffset = self.header.get("fullIndexOffset")
-
+  
             values = self.getValues(chr, start, end, zoomlvl)
 
             if respType is "DataFrame":
@@ -282,7 +286,7 @@ class BigWig(BaseFile):
         chrmId = self.getId(chr)
         if chrmId == None:
             raise Exception("didn't find chromId with the given name")
-            
+        
         values = self.locateTree(chrmId, start, end, zoomlvl, offset)
         return values
 
@@ -304,11 +308,12 @@ class BigWig(BaseFile):
             data = self.chromTreeBin
 
             (treeMagic, blockSize, keySize, valSize, itemCount, treeReserved, isLeaf, nodeReserved, count) = struct.unpack(self.endian + "IIIIQQBBH", data[0:36])
+            
             chrmId = -1
-
+           
             # data = self.get_bytes(chromosomeTreeOffset + 36, count*(keySize + 8))
             data = data[36:]
-
+            
             for y in range(0, count):
                 key = ""
                 for x in range(0, keySize):
@@ -341,9 +346,35 @@ class BigWig(BaseFile):
         result = []
         if start >= end: 
             return result
-
+        
         rootNode = self.readRtreeNode(zoomlvl, offset)
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
+
+        dataBlocks = []
+        for node in filtered_nodes:
+            # getting data intervals blocks
+            # start, end, number of filtered_nodes merged
+            if not self.cacheData.get(str(node[4])):
+                dataBlocks.append([node[4], node[4] + node[5], [[node[4], node[5]]]])
+
+        mergedDataBlocks = []
+        for node in dataBlocks:
+            if not mergedDataBlocks or mergedDataBlocks[-1][1] < node[0]:
+                # first item or the last item doesn't overlap with current
+                mergedDataBlocks.append(node)
+            else:
+                mergedDataBlocks[-1][1] = max(mergedDataBlocks[-1][1], node[1])
+                mergedDataBlocks[-1][2].append(node[2][0])
+        
+        # get data for all merged blocks
+        for node in mergedDataBlocks:
+            dataBlockBytes = self.get_bytes(node[0], node[1] - node[0])
+            dataIdxTracker = 0
+            for tnode in node[2]:
+                data = dataBlockBytes[dataIdxTracker: dataIdxTracker + tnode[1]]
+                decom = zlib.decompress(data) if self.compressed else data
+                self.cacheData[str(tnode[0])] = decom
+                dataIdxTracker += tnode[1]
 
         for node in filtered_nodes:
             result += self.parseLeafDataNode(chrmId, start, end, zoomlvl, node[0], node[1], node[2], node[3], node[4], node[5])
@@ -399,9 +430,14 @@ class BigWig(BaseFile):
             node Rtree object
         """
         # data = self.tree.get(str(zoomlvl))[offset:offset + 4]
-        data = self.getTreeBytes(zoomlvl, offset, 4)
-        (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", data)
-        return {"rIsLeaf": rIsLeaf, "rCount": rCount, "rOffset": offset + 4}
+        if self.cacheData.get(str(zoomlvl) + "-" + str(offset)):
+            data = self.cacheData.get(str(zoomlvl) + "-" + str(offset))
+        else:
+            data = self.getTreeBytes(zoomlvl, offset, 1024)
+            self.cacheData[str(zoomlvl) + "-" + str(offset)] = data
+        header = data[0:4]
+        (rIsLeaf, rReserved, rCount) = struct.unpack(self.endian + "BBH", header)
+        return {"rIsLeaf": rIsLeaf, "rCount": rCount, "rOffset": offset + 4, "rest": data[4:]}
 
     def traverseRtreeNodes(self, node, zoomlvl, chrmId, start, end, result = []):
         """Traverse an Rtree to get nodes in the given range
@@ -413,10 +449,17 @@ class BigWig(BaseFile):
         else:
             if node.get("rIsLeaf"):
                 # print("leaf")
-                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
+                if node.get("rCount") * 32 <= len(node.get("rest")):
+                    tree  = node.get("rest")[0:node.get("rCount") * 32]
+                else:
+                    tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 32)
+                
             else:
                 # print("not leaf")
-                tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
+                if node.get("rCount") * 24 <= len(node.get("rest")):
+                    tree  = node.get("rest")[0:node.get("rCount") * 24]
+                else:
+                    tree = self.getTreeBytes(zoomlvl, offset, node.get("rCount") * 24)
             self.cacheData[str(zoomlvl) + "-" + str(offset)] = tree
 
         if node.get("rIsLeaf"):
