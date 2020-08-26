@@ -160,6 +160,9 @@ class BigWig(BaseFile):
         if bins is None:
             bins = 2000
 
+        # if type(self).__name__ == "BigBed":
+        #     zoomlvl = -2
+
         result = pd.DataFrame(columns = self.columns)
 
         try:
@@ -171,7 +174,7 @@ class BigWig(BaseFile):
             else:
                 self.zooms = {}
                 zoomOffset = self.header.get("fullIndexOffset")
-  
+
             values = self.getValues(chr, start, end, zoomlvl)
 
             if respType is "DataFrame":
@@ -350,12 +353,16 @@ class BigWig(BaseFile):
         rootNode = self.readRtreeNode(zoomlvl, offset)
         filtered_nodes = self.traverseRtreeNodes(rootNode, zoomlvl, chrmId, start, end, [])
 
+        # print(filtered_nodes)
+
         dataBlocks = []
         for node in filtered_nodes:
             # getting data intervals blocks
             # start, end, number of filtered_nodes merged
             if not self.cacheData.get(str(node[4])):
                 dataBlocks.append([node[4], node[4] + node[5], [[node[4], node[5]]]])
+
+        # print(dataBlocks)
 
         mergedDataBlocks = []
         for node in dataBlocks:
@@ -366,6 +373,8 @@ class BigWig(BaseFile):
                 mergedDataBlocks[-1][1] = max(mergedDataBlocks[-1][1], node[1])
                 mergedDataBlocks[-1][2].append(node[2][0])
         
+        # print(mergedDataBlocks)
+
         # get data for all merged blocks
         for node in mergedDataBlocks:
             dataBlockBytes = self.get_bytes(node[0], node[1] - node[0])
@@ -373,7 +382,7 @@ class BigWig(BaseFile):
             for tnode in node[2]:
                 data = dataBlockBytes[dataIdxTracker: dataIdxTracker + tnode[1]]
                 decom = zlib.decompress(data) if self.compressed else data
-                self.cacheData[str(tnode[0])] = decom
+                self.cacheData[str(zoomlvl) + "-" + str(tnode[0])] = decom
                 dataIdxTracker += tnode[1]
 
         for node in filtered_nodes:
@@ -657,13 +666,13 @@ class BigWig(BaseFile):
     def parseLeafDataNode(self, chrmId, start, end, zoomlvl, rStartChromIx, rStartBase, rEndChromIx, rEndBase, rdataOffset, rDataSize):
         """Parse an Rtree leaf node
         """
-        if self.cacheData.get(str(rdataOffset)):
-            decom = self.cacheData.get(str(rdataOffset))
+        if self.cacheData.get(str(zoomlvl) + "-" + str(rdataOffset)):
+            decom = self.cacheData.get(str(zoomlvl) + "-" + str(rdataOffset))
         else:
             self.sync = True
             data = self.get_bytes(rdataOffset, rDataSize)
             decom = zlib.decompress(data) if self.compressed else data
-            self.cacheData[str(rdataOffset)] = decom
+            self.cacheData[str(zoomlvl) + "-" + str(rdataOffset)] = decom
         result = []
         startv = 0
         itemCount = 0
