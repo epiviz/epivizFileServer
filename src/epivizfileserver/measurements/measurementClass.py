@@ -369,11 +369,16 @@ class FileMeasurement(Measurement):
                 cols = ["chr", "start", "end"]
                 cols.append(self.mid)
                 result = result[cols]   
+            elif self.mtype == "tiledb":
+                cols = ["chr", "start", "end", self.mid]
+                cols.extend(self.metadata)
+                result = result[cols]
+                result = result.fillna(0)
 
-            if bin and not self.isGenes: 
+            if bin and not self.isGenes and self.mtype != "tiledb": 
                 result, err = await self.fileHandler.binFileData(self.source, self.mtype, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
-            
+ 
             return result, str(err)
         except Exception as e:
             logging.error("File Measurement: %s\t%s\t%s" %(self.mid, self.name, "file_get_data"), exc_info=True)

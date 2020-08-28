@@ -1,4 +1,4 @@
-from ..parser import BigBed, BigWig, SamFile, TbxFile, BamFile, GtfFile, GtfParsedFile, GWASBigBed
+from ..parser import BigBed, BigWig, SamFile, TbxFile, BamFile, GtfFile, GtfParsedFile, GWASBigBed, TileDB
 
 def create_parser_object(format, source):
     """
@@ -27,7 +27,8 @@ def create_parser_object(format, source):
         "tabix": TbxFile,
         "gtf": GtfFile,
         "gtfparsed": GtfParsedFile,
-        "gwas": GWASBigBed
+        "gwas": GWASBigBed,
+        "tiledb": TileDB
     }
     
     return req_manager[format]

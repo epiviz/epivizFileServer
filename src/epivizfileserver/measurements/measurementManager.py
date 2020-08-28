@@ -6,6 +6,7 @@ from ..trackhub import TrackHub
 from ..parser import GtfParsedFile, TbxFile
 import ujson
 import requests
+import pandas as pd
 
 class MeasurementManager(object):
     """
@@ -91,13 +92,28 @@ class MeasurementManager(object):
             if tgenome is None:
                 tgenome = genome
 
-            tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
+            if rec.get("file_type") == "tiledb":
+                # its expression dataset 
+                samples = pd.read_csv(rec.get("url") + "/cols", sep="\t", index_col=0)
+                for index, row in samples.iterrows():
+                # for samp in sampels["samples"]:
+                    samp = row["samples"]
+                    tempFileM = FileMeasurement(rec.get("file_type"), samp, 
+                            samp + "_" + rec.get("name"), 
+                            rec.get("url"), genome=tgenome, annotation=row.to_dict(),
+                            metadata=rec.get("metadata"), minValue=0, maxValue=5,
+                            isGenes=isGene, fileHandler=fileHandler
+                        )
+                    measurements.append(tempFileM)
+                    self.measurements.append(tempFileM)          
+            else:
+                tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
                             rec.get("url"), genome=tgenome, annotation=rec.get("annotation"),
                             metadata=rec.get("metadata"), minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler
                         )
-            measurements.append(tempFileM)
-            self.measurements.append(tempFileM)
+                measurements.append(tempFileM)
+                self.measurements.append(tempFileM)
         
         return(measurements)
 
