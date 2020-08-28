@@ -4,17 +4,12 @@ import pandas as pd
 
 class TileDB(object):
     """
-    HDF5 File Class to parse only local hdf5 files 
+    TileDB Class to parse only local tiledb files 
 
     Args:
-        file (str): file location can be local (full path) or hosted publicly
+        file (str): local full path to a dataset tiledb_folder. This folder
+            should contain data.tiledb, rows and cols files
         columns ([str]) : column names for various columns in file
-    
-    Attributes:
-        file: a pysam file object
-        fileSrc: location of the file
-        cacheData: cache of accessed data in memory
-        columns: column names to use
     """
     def __init__(self, file, columns=None):
         self.count = tiledb.open(file + "/data.tiledb", 'r')
