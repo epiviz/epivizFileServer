@@ -62,15 +62,15 @@ class BigWig(BaseFile):
         self.header = self.parse_header(header[0:56])
 
         # self.headerExtra = self.get_bytes(64, (self.header.zoomLevels * 64) + )
-        if self.header.get("fullDataOffset") < 1024:
-            addHeader = data[64: self.header.get("fullDataOffset") - 64]
+        if self.header.get("fullDataOffset") <= 1024:
+            addHeader = data[64: self.header.get("fullDataOffset")]
         else:
             addHeader = self.get_bytes(64, self.header.get("fullDataOffset") - 64)
 
         self.zoomBin = addHeader[0:self.header.get("zoomLevels") * 24]
         # self.getZoom(3, 1)
 
-        self.chromTreeBin = data[self.header.get("chromTreeOffset"):self.header.get("fullDataOffset")]
+        self.chromTreeBin = addHeader[self.header.get("chromTreeOffset")-64:self.header.get("fullDataOffset")-64]
         # self.getId("chr11")
 
         if self.columns is None:
