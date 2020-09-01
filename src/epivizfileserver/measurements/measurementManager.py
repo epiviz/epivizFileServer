@@ -146,19 +146,36 @@ class MeasurementManager(object):
         if url is None:
             raise Exception("Error reading measurements from emd endpoint: missing url")
 
-
-        r = requests.get(url + "/ms/")
+        r = requests.get(url + "/collections")
         if r.status_code != 200:
-            raise Exception("Error importing measurements {}".format(r.text))
-        records = r.json()
+            raise Exception("Error importing collection {}".format(r.text))
 
-        # this is not elegant but... the epiviz-md api returns an 'id' which is the
-        # database id, we want the id of the record to be the 'measurement_id' as returned 
-        # by the epiviz-md api endpoint, so let's do that bit of surgery
-        for rec in records:
-            rec['id'] = rec.get('measurement_id')
-            del rec['measurement_id']
+        collection_records = r.json()
 
+        records = []
+
+        for collection_record in collection_records:
+            r = requests.get(url + "/collections/{}/ms".format(collection_record['id']))
+            if r.status_code != 200:
+                raise Exception("Error importing measurements from collection {}".format(r.text))
+
+
+            current_records = r.json()
+
+            # this is not elegant but... the epiviz-md api returns an 'id' which is the
+            # database id, we want the id of the record to be the 'measurement_id' as returned 
+            # by the epiviz-md api endpoint, so let's do that bit of surgery
+            for rec in current_records:
+                rec['id'] = rec.get('measurement_id')
+                del rec['measurement_id']
+
+                current_annotation = rec['annotation']
+                if current_annotation is None:
+                    current_annotation = { "collection": collection_record['name'] }
+                else:
+                    current_annotation['collection'] = collection_record['name']
+
+            records += current_records
         return records
 
     def import_emd(self, url, fileHandler=None, listen=True):
