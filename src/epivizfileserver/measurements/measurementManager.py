@@ -171,9 +171,9 @@ class MeasurementManager(object):
 
                 current_annotation = rec['annotation']
                 if current_annotation is None:
-                    current_annotation = { "collection": collection_record['name'] }
+                    current_annotation = { "collection": collection_record['collection_id'] }
                 else:
-                    current_annotation['collection'] = collection_record['name']
+                    current_annotation['collection'] = collection_record['collection_id']
 
             records += current_records
         return records
