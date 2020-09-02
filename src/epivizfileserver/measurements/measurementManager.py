@@ -156,7 +156,7 @@ class MeasurementManager(object):
         records = []
 
         for collection_record in collection_records:
-            req_url = url + "/collections/{}/ms/".format(collection_record['collection_id'])
+            req_url = url + "/collections/{}/ms".format(collection_record['collection_id'])
             r = requests.get(req_url)
             if r.status_code != 200:
                 raise Exception("Error importing measurements from collection {} with url {}: {}".format(collection_record['collection_id'], req_url, r.text))
