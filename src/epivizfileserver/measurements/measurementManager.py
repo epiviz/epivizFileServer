@@ -157,7 +157,7 @@ class MeasurementManager(object):
         for collection_record in collection_records:
             r = requests.get(url + "/collections/{}/ms".format(collection_record['collection_id']))
             if r.status_code != 200:
-                raise Exception("Error importing measurements from collection {}".format(r.text))
+                raise Exception("Error importing measurements from collection {}: {}".format(collection_record['collection_id'], r.text))
 
 
             current_records = r.json()
