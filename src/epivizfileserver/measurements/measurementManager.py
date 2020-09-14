@@ -98,17 +98,27 @@ class MeasurementManager(object):
                 for index, row in samples.iterrows():
                 # for samp in sampels["samples"]:
                     samp = row["samples"]
+                    anno = row.to_dict()
+                    anno["_filetype"] = rec.get("file_type")
+                    for key in rec.get("annotation").keys():
+                        anno[key] = rec.get("annotation").get(key)
                     tempFileM = FileMeasurement(rec.get("file_type"), samp, 
                             samp + "_" + rec.get("name"), 
-                            rec.get("url"), genome=tgenome, annotation=row.to_dict(),
+                            rec.get("url"), genome=tgenome, annotation=anno,
                             metadata=rec.get("metadata"), minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler
                         )
                     measurements.append(tempFileM)
                     self.measurements.append(tempFileM)          
             else:
+                anno = rec.get("annotation")
+
+                if anno is None:
+                    anno = {}
+
+                anno["_filetype"] = rec.get("file_type")
                 tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
-                            rec.get("url"), genome=tgenome, annotation=rec.get("annotation"),
+                            rec.get("url"), genome=tgenome, annotation=anno,
                             metadata=rec.get("metadata"), minValue=0, maxValue=5,
                             isGenes=isGene, fileHandler=fileHandler
                         )
