@@ -21,6 +21,7 @@ class MeasurementManager(object):
         self.genomes = {}
         self.measurements = []
         self.emd_endpoint = None
+        self.tiledb = []
         self.stats = {
             "getRows": {},
             "getValues": {},

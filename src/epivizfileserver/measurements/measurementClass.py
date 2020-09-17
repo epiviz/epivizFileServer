@@ -375,7 +375,7 @@ class FileMeasurement(Measurement):
                 result = result[cols]
                 result = result.fillna(0)
 
-            if bin and not self.isGenes and self.mtype != "tiledb": 
+            if bin and not self.isGenes and self.mtype not in ["tiledb", "hic"]: 
                 result, err = await self.fileHandler.binFileData(self.source, self.mtype, result, chr, start, end, 
                                 bins, columns=self.get_columns(), metadata=self.metadata)
  
