@@ -18,7 +18,7 @@ def create_parser_object(format, source, columns=None):
     from .TbxFile import TbxFile
     from .GtfFile import GtfFile
     from .GWASBigBed import GWASBigBed
-    from .HiCBigBed import HiCBigBed
+    from .InteractionBigBed import InteractionBigBed
     from .TileDB import TileDB
 
     req_manager = {
@@ -37,7 +37,7 @@ def create_parser_object(format, source, columns=None):
         "gtf": GtfFile,
         "gwas": GWASBigBed,
         "tiledb": TileDB,
-        "hic": HiCBigBed
+        "interaction_bigbed": InteractionBigBed
     }
     
     return req_manager[format](source, columns)

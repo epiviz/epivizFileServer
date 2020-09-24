@@ -7,7 +7,7 @@ from .TbxFile import TbxFile
 from .GtfFile import GtfFile
 from .GtfParsedFile import GtfParsedFile
 from .GWASBigBed import GWASBigBed
-from .HiCBigBed import HiCBigBed
+from .InteractionBigBed import InteractionBigBed
 from .TileDB import TileDB
 from .HDF5File import HDF5File
 from .Helper import get_range_helper
