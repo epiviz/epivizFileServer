@@ -3,7 +3,7 @@ from aiocache.serializers import JsonSerializer
 import pandas as pd
 from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
 from ..trackhub import TrackHub
-from ..parser import GtfParsedFile, TbxFile
+from ..parser import GtfParsedFile, TbxFile, BigBed
 import ujson
 import requests
 import pandas as pd
@@ -110,7 +110,31 @@ class MeasurementManager(object):
                             isGenes=isGene, fileHandler=fileHandler
                         )
                     measurements.append(tempFileM)
-                    self.measurements.append(tempFileM)          
+                    self.measurements.append(tempFileM)       
+            elif rec.get("file_type").lower() in ["gwas", "bigbed"]:
+                anno = rec.get("annotation")
+
+                if anno is None:
+                    anno = {}
+                
+                bw = BigBed(rec.get("url"))
+                metadata = bw.get_autosql()
+
+                if metadata and len(metadata) > 3:
+                    metadata = metadata[3:]
+                else:
+                    metadata = []
+
+
+                anno["_filetype"] = rec.get("file_type")
+                tempFileM = FileMeasurement(rec.get("file_type"), rec.get("id"), rec.get("name"), 
+                            rec.get("url"), genome=tgenome, annotation=anno,
+                            metadata=metadata, minValue=0, maxValue=5,
+                            isGenes=isGene, fileHandler=fileHandler
+                        )
+                measurements.append(tempFileM)
+                self.measurements.append(tempFileM)
+
             else:
                 anno = rec.get("annotation")
 
