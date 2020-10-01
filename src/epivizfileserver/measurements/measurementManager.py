@@ -96,9 +96,9 @@ class MeasurementManager(object):
             if rec.get("file_type") == "tiledb":
                 # its expression dataset 
                 samples = pd.read_csv(rec.get("url") + "/cols", sep="\t", index_col=0)
-                for index, row in samples.iterrows():
-                # for samp in sampels["samples"]:
-                    samp = row["samples"]
+                sample_names = samples.index.values
+
+                for samp, (index, row) in zip(sample_names, samples.iterrows()):
                     anno = row.to_dict()
                     anno["_filetype"] = rec.get("file_type")
                     for key in rec.get("annotation").keys():
@@ -106,7 +106,7 @@ class MeasurementManager(object):
                     tempFileM = FileMeasurement(rec.get("file_type"), samp, 
                             samp + "_" + rec.get("name"), 
                             rec.get("url"), genome=tgenome, annotation=anno,
-                            metadata=rec.get("metadata"), minValue=0, maxValue=5,
+                            metadata=rec.get("metadata"), minValue=0, maxValue=20,
                             isGenes=isGene, fileHandler=fileHandler
                         )
                     measurements.append(tempFileM)
