@@ -98,6 +98,10 @@ class MeasurementManager(object):
                 samples = pd.read_csv(rec.get("url") + "/cols", sep="\t", index_col=0)
                 sample_names = samples.index.values
 
+                rows = pd.read_csv(rec.get("url") + "/rows", sep="\t", index_col=False, nrows=10)
+                metadata = rows.columns.values
+                metadata = [ m for m in metadata if m not in ['chr', 'start', 'end'] ]
+
                 for samp, (index, row) in zip(sample_names, samples.iterrows()):
                     anno = row.to_dict()
                     anno["_filetype"] = rec.get("file_type")
@@ -106,7 +110,7 @@ class MeasurementManager(object):
                     tempFileM = FileMeasurement(rec.get("file_type"), samp, 
                             samp + "_" + rec.get("name"), 
                             rec.get("url"), genome=tgenome, annotation=anno,
-                            metadata=rec.get("metadata"), minValue=0, maxValue=20,
+                            metadata=metadata, minValue=0, maxValue=20,
                             isGenes=isGene, fileHandler=fileHandler
                         )
                     measurements.append(tempFileM)
