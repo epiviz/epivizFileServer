@@ -127,8 +127,8 @@ class MeasurementRequest(EpivizRequest):
                 result.get("datasourceId").append(rec.source)
                 result.get("defaultChartType").append("track")
                 result.get("id").append(rec.mid)
-                result.get("maxValue").append(rec.minValue)
-                result.get("minValue").append(rec.maxValue)
+                result.get("maxValue").append(rec.maxValue)
+                result.get("minValue").append(rec.minValue)
                 result.get("name").append(rec.name)
 
                 result_type = "feature"
