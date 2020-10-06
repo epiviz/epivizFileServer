@@ -196,6 +196,9 @@ class MeasurementSet(object):
         else:
             logging.debug("Tried to del ms {}: not found".format(key))
 
+    def get(self, key):
+        return self.measurements[key] if key in self.measurements else None
+
     def get_measurements(self):
         return self.measurements.values()
 
@@ -533,6 +536,11 @@ class MeasurementManager(object):
             new_records = self.emd_map.sync(self.measurements)
             self.import_records(new_records, fileHandler = self.emd_map.handler)
         return self.measurements.get_measurements()
+
+    def get_measurement(self, ms_id):
+        """Get a specific measurement
+        """
+        return self.measurements.get(ms_id)
 
     def get_genomes(self):
         """Get all available genomes
