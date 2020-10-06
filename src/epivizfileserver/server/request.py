@@ -121,6 +121,7 @@ class MeasurementRequest(EpivizRequest):
         try:
             measurements = mMgr.get_measurements()
 
+            logging.debug("Formatting measurements to send response")
             for rec in measurements:
                 result.get("annotation").append(rec.annotation)
                 result.get("datasourceGroup").append(rec.mid)
@@ -328,15 +329,3 @@ class StatusRequest(EpivizRequest):
             logging.error("Status Request: %s" % (self.datasource), exc_info=True)
             # print("failed in req get_data", str(e))
             return 0, str(err) + " --- " + str(e)
-
-class UpdateCollectionsRequest(EpivizRequest):
-    def __init__(self, request):
-        super(UpdateCollectionsRequest, self).__init__(request)
-
-    async def update_collections(self, mMgr, fileHandler):
-        result = []
-        err = None
-
-        # TODO: this should be async
-        result, err = mMgr.update_collections(handler=fileHandler)
-        return result, str(err)

@@ -8,6 +8,200 @@ import ujson
 import requests
 import pandas as pd
 
+from sanic.log import logger as logging
+
+class EMDMeasurementMap(object):
+    """
+    Manage mapping between measuremnts in EFS and metadata service
+
+    """
+    def __init__(self, url, fileHandler):
+        self.emd_endpoint = url
+        self.handler = fileHandler
+
+        # collection records from emd
+        self.collections = dict()
+
+        # map { emd id => efs measurement id }
+        self.measurement_map = dict()
+
+    def init(self):
+        logging.debug("Initializing from emd at {}".format(self.emd_endpoint))
+        self.init_collections()
+        records = self.init_measurements()
+        logging.debug("Done initializing from emd")
+        return records
+
+    def init_collections(self):
+        req_url = self.emd_endpoint + "/collections/"
+        logging.debug("Initializing collections from emd")
+        r = requests.get(req_url)
+        if r.status_code != 200:
+            raise Exception("Error initializing collections from emd {}: {}".format(req_url, r.text))
+
+        collection_records = r.json()    
+        for rec in collection_records:
+            # map database id to efs id
+            self.collections[rec['id']] = rec['collection_id']
+        logging.debug("Done initializing collections from emd")
+
+    def process_emd_record(self, rec):
+        # this is not elegant but... the epiviz-md api returns an 'id' which is the
+        # database id, we want the id of the record to be the 'measurement_id' as returned 
+        # by the epiviz-md api endpoint, so let's do that bit of surgery
+        # we keep a map between ids here
+        self.measurement_map[rec['id']] = rec['measurement_id']
+
+        rec['id'] = rec['measurement_id']
+        del rec['measurement_id']
+
+        collection_id = rec['collection_id']
+        del rec['collection_id']
+        collection_name = self.collections[collection_id]
+
+        current_annotation = rec['annotation']
+        if current_annotation is None:
+            current_annotation = { "collection": collection_name }
+        else:
+            current_annotation['collection'] = collection_name
+        rec['annotation'] = current_annotation
+
+    def init_measurements(self):
+        req_url = self.emd_endpoint + "/ms/"
+        logging.debug("Initializing measurements from emd")
+        r = requests.get(req_url)
+        if r.status_code != 200:
+            raise Exception("Error initializing measurements from emd {}: {}".format(req_url, r.text))
+
+        records = r.json()
+
+        for rec in records:
+            self.process_emd_record(rec)
+
+        logging.debug("Done initializing measurements")
+        return records
+
+    def sync(self, current_ms):
+        logging.debug("Syncing with emd at {}".format(self.emd_endpoint))
+
+        # this will remove deleted collections from
+        # the collection id map
+        new_collections = self.sync_collections()
+        new_records_from_collections = self.add_new_collections(new_collections)
+
+        # this will remove measurements in current_ms
+        # no longer in the emd db
+        new_measurements = self.sync_measurements(current_ms)
+        new_records = self.add_new_measurements(new_measurements)
+        logging.debug("Done syncing with emd")
+        return new_records_from_collections + new_records
+
+    def sync_collections(self):
+        req_url = self.emd_endpoint + "/collections/ids"
+        logging.debug("Syncing collections from emd")
+        r = requests.get(req_url)
+        if r.status_code != 200:
+            raise Exception("Error getting collection ids to sync from emd {}: {}".format(req_url, r.text))
+
+        emd_ids = r.json()
+        new_ids = list(set(emd_ids) - set(self.collections.values()))
+        del_ids = [ k for k, v in self.collections.items() if v not in emd_ids ]
+
+        for id in del_ids:
+            del self.collections[id]
+
+        return new_ids
+
+    def add_new_collections(self, new_collection_ids):
+        logging.debug("Adding new collections from emd")
+        all_records = []
+
+        for collection_id in new_collection_ids:
+            req_url = self.emd_endpoint + "/collections/" + collection_id
+            r = requests.get(req_url)
+            if r.status_code != 200:
+                raise Exception("Error getting collection with id {} from {}: {}".format(collection_id, req_url, r.text))
+
+            rec = r.json()
+
+            # map emd db id to efs id
+            self.collections[rec['id']] = rec['collection_id']
+            logging.debug("Added new collection {} from emd".format(rec['collection_id']))
+            
+            logging.debug("Adding measurements from collection {} from emd".format(rec['collection_id']))
+            req_url = self.emd_endpoint + "/collections/" + collection_id + "/ms"
+            r = requests.get(req_url)
+            if r.status_code != 200:
+                raise Exception("Error getting records for collection with id {} from {}: {}".format(collection_id, req_url, r.text))
+
+            records = r.json()
+            for rec in records:
+                self.process_emd_record(rec)
+
+            logging.debug("Done adding measurements from new collection")
+            all_records.extend(records)
+
+        logging.debug("Done adding new collections from emd")
+        return all_records
+
+    def sync_measurements(self, current_ms):
+        req_url = self.emd_endpoint + "/ms/ids"
+        logging.debug("Syncing measurements from emd")
+        r = requests.get(req_url)
+        if r.status_code != 200:
+            raise Exception("Error getting ms ids to sync from emd {}: {}".format(req_url, r.text))
+
+        ms_ids = r.json()
+        new_ids = list(set(ms_ids) - set(self.measurement_map.values()))
+        del_ids = [ k for k, v in self.measurement_map.items() if v not in ms_ids]
+
+        for id in del_ids:
+            ms_id = self.measurement_map[id]
+            del current_ms[ms_id]
+
+            if id in self.measurement_map:
+                del self.measurement_map[id]
+            else:
+                logging.debug("Tried to del ms map {}: not found".format(id))
+
+        return new_ids
+
+    def add_new_measurements(self, new_ms_ids):
+        logging.debug("Adding new ms from emd")
+        all_records = []
+        
+        for ms_id in new_ms_ids:
+            req_url = self.emd_endpoint + "/ms/" + ms_id
+            r = requests.get(req_url)
+            if r.status_code != 200:
+                raise Exception("Error getting ms with id {} from {}: {}".format(ms_id, req_url, r.text))
+
+            rec = r.json()
+            self.process_emd_record(rec)
+            all_records.append(rec)
+
+        logging.debug("Done adding new ms from emd")
+        return all_records
+
+class MeasurementSet(object):
+    def __init__(self):
+        self.measurements = {}
+
+    def append(self, ms):
+        self.measurements[ms.mid] = ms
+
+    def __delitem__(self, key):
+        if key in self.measurements:
+            del self.measurements[key]
+        else:
+            logging.debug("Tried to del ms {}: not found".format(key))
+
+    def get_measurements(self):
+        return self.measurements.values()
+
+    def get_mids(self):
+        return self.measurements.keys()
+    
 class MeasurementManager(object):
     """
     Measurement manager class
@@ -19,8 +213,9 @@ class MeasurementManager(object):
     def __init__(self):
         # self.measurements = pd.DataFrame()
         self.genomes = {}
-        self.measurements = []
+        self.measurements = MeasurementSet()
         self.emd_endpoint = None
+        self.emd_map = None
         self.tiledb = []
         self.stats = {
             "getRows": {},
@@ -81,7 +276,16 @@ class MeasurementManager(object):
         """ 
         measurements = []
 
-        for rec in records:
+        num_records = len(records)
+
+        for i, rec in enumerate(records):
+            format_args = { "i": i,
+                "num_records": num_records,
+                "datatype": rec['datatype'],
+                "file_type": rec['file_type']
+            }
+            logging.debug("Importing record {i}/{num_records} with datatype {datatype} and file type {file_type}".format(**format_args))
+
             isGene = False
             if "annotation" in rec["datatype"]:
                 isGene = True
@@ -114,7 +318,8 @@ class MeasurementManager(object):
                             isGenes=isGene, fileHandler=fileHandler
                         )
                     measurements.append(tempFileM)
-                    self.measurements.append(tempFileM)       
+                    self.measurements.append(tempFileM)
+                           
             elif rec.get("file_type").lower() in ["gwas", "bigbed"]:
                 anno = rec.get("annotation")
 
@@ -172,6 +377,7 @@ class MeasurementManager(object):
                 measurements.append(tempFile)
         return measurements
 
+    
     def get_from_emd(self, url=None):
         """Make a GET request to a metadata api
 
@@ -188,36 +394,54 @@ class MeasurementManager(object):
         req_url = url + "/collections/"
         r = requests.get(req_url)
         if r.status_code != 200:
-            raise Exception("Error importing collections {} from {}".format(r.text, req_url))
+            raise Exception("Error getting collections from emd {}".format(req_url))
 
         collection_records = r.json()
-
-        records = []
-
-        for collection_record in collection_records:
-            req_url = url + "/collections/{}/ms".format(collection_record['collection_id'])
-            r = requests.get(req_url)
-            if r.status_code != 200:
-                raise Exception("Error importing measurements from collection {} with url {}: {}".format(collection_record['collection_id'], req_url, r.text))
+        collections = {}
+    
+        for rec in collection_records:
+            collections[rec['id']] = rec['collection_id']
 
 
-            current_records = r.json()
+        req_url = url + "/ms/"
+        r = requests.get(req_url)
+        if r.status_code != 200:
+            raise Exception("Error importing measurements from collection {} with url {}: {}".format(collection_record['collection_id'], req_url, r.text))
 
-            # this is not elegant but... the epiviz-md api returns an 'id' which is the
-            # database id, we want the id of the record to be the 'measurement_id' as returned 
-            # by the epiviz-md api endpoint, so let's do that bit of surgery
-            for rec in current_records:
-                rec['id'] = rec.get('measurement_id')
-                del rec['measurement_id']
 
-                current_annotation = rec['annotation']
-                if current_annotation is None:
-                    current_annotation = { "collection": collection_record['collection_id'] }
-                else:
-                    current_annotation['collection'] = collection_record['collection_id']
+        records = r.json()
 
-            records += current_records
+        # this is not elegant but... the epiviz-md api returns an 'id' which is the
+        # database id, we want the id of the record to be the 'measurement_id' as returned 
+        # by the epiviz-md api endpoint, so let's do that bit of surgery
+        for rec in records:
+            rec['id'] = rec['measurement_id']
+            del rec['measurement_id']
+
+            collection_id = rec['collection_id']
+            del rec['collection_id']
+            collection_name = collections[collection_id]
+
+            current_annotation = rec['annotation']
+            if current_annotation is None:
+                current_annotation = { "collection": collection_name }
+            else:
+                current_annotation['collection'] = collection_name
+            rec['annotation'] = current_annotation
+
         return records
+
+    def use_emd(self, url, fileHandler=None):
+        """Delegate all getMeasurement calls to an epiviz-md metdata service api
+
+        Args:
+            url: the url of the epiviz-md api
+            fileHandler: an optional filehandler to use
+        """
+        logging.debug("Will be using emd api at {}".format(url))
+        self.emd_map = EMDMeasurementMap(url, fileHandler)
+        records = self.emd_map.init()
+        self.import_records(records, fileHandler = fileHandler)
 
     def import_emd(self, url, fileHandler=None, listen=True):
         """Import measurements from an epiviz-md metadata service api.
@@ -302,7 +526,13 @@ class MeasurementManager(object):
     def get_measurements(self):
         """Get all available measurements
         """
-        return self.measurements
+        if self.emd_map is not None:
+            # this will remove measurements in self.measureemnts
+            # that are not in the emd dbs any more
+            logging.debug("Getting mesurements. Cur ms {}".format(list(self.measurements.get_mids())))
+            new_records = self.emd_map.sync(self.measurements)
+            self.import_records(new_records, fileHandler = self.emd_map.handler)
+        return self.measurements.get_measurements()
 
     def get_genomes(self):
         """Get all available genomes
@@ -325,25 +555,3 @@ class MeasurementManager(object):
                 measurements.append(m)
         self.measurements.append(measurements)
         return measurements
-
-    def update_collections(self, handler=None):
-        result = []
-
-        if self.emd_endpoint is None:
-            return result, "Measurement manager is not listening"
-
-        try:
-            records = self.get_from_emd()
-        except Exception as e:
-            return result, "Error getting measurements from emd api {}".format(e)
-
-        current_measurement_ids = [ms.mid for ms in self.get_measurements()]
-        print(current_measurement_ids)
-        new_records = [rec for rec in records if rec.get('id') not in current_measurement_ids]
-
-        try:
-            self.import_records(new_records, fileHandler=handler)
-        except Exception as e:
-            return "", "Error inserting new measurements from emd api {}".format(e)
-
-        return new_records, ""
