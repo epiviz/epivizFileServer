@@ -1,11 +1,12 @@
 """Download and Build Genome files for use with Epiviz File Server. either --ucsc or --gtf must be provided.
 
 Usage:
-  efs.py build_genome (--ucsc=<genome> | --gtf=<file>) [--output=<output>]
+  efs.py build_genome (--ucsc=<genome> | --gtf=<file>) [--compressed] [--output=<output>]
 
 Options:
-  --ucsc=<genome> genome build to download and parse from ucsc, eg: mm10
-  --gtf=<file> local gtf file
+  --ucsc=<genome>   genome build to download and parse from ucsc, eg: mm10
+  --gtf=<file>  local gtf file
+  -c --compressed   File is gzip compressed
   --output=<output> output prefix of file to save, defaults to current directory and saves result as output.tsv eg: ./mm10
   -h --help     Show this screen.
 """
@@ -50,6 +51,7 @@ def main():
     genome = args["--ucsc"]
     gtf = args["--gtf"]
     output = args["--output"]
+    compressed = args["--compressed"]
 
     # if genome is None and gtf is None:
     #     raise("either --ucsc or --gtf must be provided")
@@ -74,7 +76,10 @@ def main():
         raise("either --ucsc or --gtf must be provided")
 
     print("Reading File - ", full_path)
-    df = pd.read_csv(full_path, sep="\t", names = ["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"])
+    if compressed:
+        df = pd.read_csv(full_path, sep="\t", names = ["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"], compression="gzip")
+    else:
+        df = pd.read_csv(full_path, sep="\t", names = ["chr", "source", "feature", "start", "end", "score", "strand", "frame", "group"])
 
     print("Parsing Gene names")
     df["gene_id"] = df["group"].apply(parse_attribute, key="gene_id").replace('"', "")
