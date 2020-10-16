@@ -1,4 +1,4 @@
-from ..parser import BigBed, BigWig, SamFile, TbxFile, BamFile, GtfFile, GtfParsedFile, GWASBigBed, TileDB, InteractionBigBed
+from ..parser import BigBed, BigWig, SamFile, TbxFile, TranscriptTbxFile, BamFile, GtfFile, GtfParsedFile, GWASBigBed, TileDB, InteractionBigBed
 
 def create_parser_object(format, source):
     """
@@ -31,7 +31,8 @@ def create_parser_object(format, source):
         "tiledb": TileDB,
         "interaction_bigbed": InteractionBigBed,
         "interaction_bigBed": InteractionBigBed,
-        "interaction_BigBed": InteractionBigBed
+        "interaction_BigBed": InteractionBigBed,
+        "transcript": TranscriptTbxFile
     }
     
     return req_manager[format]

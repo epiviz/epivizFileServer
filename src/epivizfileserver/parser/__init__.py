@@ -4,6 +4,7 @@ from .BigBed import BigBed
 from .SamFile import SamFile
 from .BamFile import BamFile
 from .TbxFile import TbxFile
+from .TranscriptTbxFile import TranscriptTbxFile
 from .GtfFile import GtfFile
 from .GtfParsedFile import GtfParsedFile
 from .GWASBigBed import GWASBigBed
