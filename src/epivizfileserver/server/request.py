@@ -121,14 +121,15 @@ class MeasurementRequest(EpivizRequest):
         try:
             measurements = mMgr.get_measurements()
 
+            logging.debug("Formatting measurements to send response")
             for rec in measurements:
                 result.get("annotation").append(rec.annotation)
                 result.get("datasourceGroup").append(rec.mid)
                 result.get("datasourceId").append(rec.source)
                 result.get("defaultChartType").append("track")
                 result.get("id").append(rec.mid)
-                result.get("maxValue").append(rec.minValue)
-                result.get("minValue").append(rec.maxValue)
+                result.get("maxValue").append(rec.maxValue)
+                result.get("minValue").append(rec.minValue)
                 result.get("name").append(rec.name)
 
                 result_type = "feature"
@@ -182,7 +183,7 @@ class DataRequest(EpivizRequest):
         return params
 
     async def get_data(self, mMgr):
-        measurements = mMgr.get_measurements()
+        #measurements = mMgr.get_measurements()
         genomes = mMgr.get_genomes()
         result = None
         err = None
@@ -205,47 +206,53 @@ class DataRequest(EpivizRequest):
                 mMgr.stats["getRows"][self.params.get("datasource")]["count"] += 1
                 mMgr.stats["getRows"][self.params.get("datasource")]["sumSquares"] += ((end-start) ** 2)
             else:
-                for rec in measurements:
-                    if "getRows" in self.request.get("action"):
-                        if rec.mid == self.params.get("datasource"):
-                            logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getRows"))
-                            start = time.time()
-                            result, err = await rec.get_data(self.params.get("seqName"), 
-                                        int(self.params.get("start")), 
-                                        int(self.params.get("end")),
-                                        self.request.get("bins")
-                                    )
-                            end = time.time()
-                            if self.params.get("datasource") not in  mMgr.stats["getRows"]:
-                                mMgr.stats["getRows"][self.params.get("datasource")] = {"sum": 0, "count": 0, "sumSquares": 0}
+                if "getRows" in self.request.get("action"):
+                    ms_id = self.params.get("datasource")
+                    rec = mMgr.get_measurement(ms_id)
+                    if rec is not None:
+                        logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getRows"))
+                        start = time.time()
+                        result, err = await rec.get_data(self.params.get("seqName"), 
+                                    int(self.params.get("start")), 
+                                    int(self.params.get("end")),
+                                    self.request.get("bins")
+                                )
+                        end = time.time()
+                        if self.params.get("datasource") not in  mMgr.stats["getRows"]:
+                            mMgr.stats["getRows"][self.params.get("datasource")] = {"sum": 0, "count": 0, "sumSquares": 0}
 
-                            mMgr.stats["getRows"][self.params.get("datasource")]["sum"] += (end-start)
-                            mMgr.stats["getRows"][self.params.get("datasource")]["count"] += 1
-                            mMgr.stats["getRows"][self.params.get("datasource")]["sumSquares"] += ((end-start) ** 2)
-                            break
-                    else:
-                        if rec.mid in self.params.get("measurement"):
-                            # legacy support for browsers that do not send this param
-                            if "bins" not in self.request.keys():
-                                tbins = 400
-                            else:
-                                tbins = int(self.request.get("bins"))
+                        mMgr.stats["getRows"][self.params.get("datasource")]["sum"] += (end-start)
+                        mMgr.stats["getRows"][self.params.get("datasource")]["count"] += 1
+                        mMgr.stats["getRows"][self.params.get("datasource")]["sumSquares"] += ((end-start) ** 2)
 
-                            logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getValues"))
-                            start = time.time()
-                            result, err = await rec.get_data(self.params.get("seqName"), 
-                                        int(self.params.get("start")), 
-                                        int(self.params.get("end")),
-                                        tbins
-                                    )
-                            end = time.time()
-                            if self.params.get("measurement")[0] not in  mMgr.stats["getValues"]:
-                                mMgr.stats["getValues"][self.params.get("measurement")[0]] = {"sum": 0, "count": 0, "sumSquares": 0}
+                else:
+                    # requests are made for list of measurements, but
+                    # for the newer apps (with components) its a list with only
+                    # one item
+                    ms_ids = self.params.get("measurement")
+                    rec = mMgr.get_measurement(ms_ids[0]) if len(ms_ids) == 1 else None
 
-                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["sum"] += (end-start)
-                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["count"] += 1
-                            mMgr.stats["getValues"][self.params.get("measurement")[0]]["sumSquares"] += ((end-start) ** 2)
-                            break
+                    if rec is not None:
+                        # legacy support for browsers that do not send this param
+                        if "bins" not in self.request.keys():
+                            tbins = 400
+                        else:
+                            tbins = int(self.request.get("bins"))
+
+                        logging.debug("Request processing: %s\t%s" % (self.request.get("requestId"), "getValues"))
+                        start = time.time()
+                        result, err = await rec.get_data(self.params.get("seqName"), 
+                                    int(self.params.get("start")), 
+                                    int(self.params.get("end")),
+                                    tbins
+                                )
+                        end = time.time()
+                        if self.params.get("measurement")[0] not in  mMgr.stats["getValues"]:
+                            mMgr.stats["getValues"][self.params.get("measurement")[0]] = {"sum": 0, "count": 0, "sumSquares": 0}
+
+                        mMgr.stats["getValues"][self.params.get("measurement")[0]]["sum"] += (end-start)
+                        mMgr.stats["getValues"][self.params.get("measurement")[0]]["count"] += 1
+                        mMgr.stats["getValues"][self.params.get("measurement")[0]]["sumSquares"] += ((end-start) ** 2)
             
             # result = result.to_json(orient='records')
             if result is not None :
@@ -328,15 +335,3 @@ class StatusRequest(EpivizRequest):
             logging.error("Status Request: %s" % (self.datasource), exc_info=True)
             # print("failed in req get_data", str(e))
             return 0, str(err) + " --- " + str(e)
-
-class UpdateCollectionsRequest(EpivizRequest):
-    def __init__(self, request):
-        super(UpdateCollectionsRequest, self).__init__(request)
-
-    async def update_collections(self, mMgr, fileHandler):
-        result = []
-        err = None
-
-        # TODO: this should be async
-        result, err = mMgr.update_collections(handler=fileHandler)
-        return result, str(err)

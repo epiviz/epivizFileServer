@@ -4,7 +4,10 @@ emd_url = 'http://localhost/emd/api/v1/'
 
 mMgr = MeasurementManager()
 handler = create_fileHandler()
-mMgr.import_emd(emd_url, fileHandler=handler, listen=True)
+
+print(mMgr)
+print(mMgr.using_emd)
+mMgr.use_emd(emd_url, fileHandler=handler)
 
 app = setup_app(mMgr)
 
