@@ -3,7 +3,7 @@ from sanic.log import logger as logging
 from ..handler import FileHandlerProcess
 # import asyncio
 import ujson
-from .request import create_request, StatusRequest, UpdateCollectionsRequest
+from .request import create_request, StatusRequest
 from sanic_cors import CORS, cross_origin
 import os
 import sys
@@ -91,7 +91,7 @@ async def setup_after_connection(app, loop):
     # init distributed client
     # cluster = LocalCluster(asynchronous=True, scheduler_port=8786, nanny=False, n_workers=2, 
     #         threads_per_worker=1)
-    logging.info("setting up dask client with scheduler", app.dask_scheduler)
+    logging.info("setting up dask client with scheduler {}".format(app.dask_scheduler))
     if app.dask_scheduler is None:
         app.client = await Client(asynchronous=True, nanny=False, loop=ioloop)
     else:
@@ -258,17 +258,3 @@ async def process_request(request, datasource):
         res["data"]["SD"] = (data["sumSquares"] + (data["count"] * (mean ** 2)) - 2 * mean * data["sum"])/data["count"]
 
     return response.json(res, status=200)
-
-@app.route("/updateCollections", methods=["POST"])
-async def process_request(request):
-    epiviz_request = UpdateCollectionsRequest(request)
-    result, error = await epiviz_request.update_collections(request.app.epivizMeasurementsManager, request.app.epivizFileHandler)
-    status_code = 201 if len(error) == 0 else 501
-        
-    return response.json({
-            "requestId": -1,
-            "type": "response",
-            "error": error,
-            "version": 5,
-            "data": result},
-        status = status_code)
