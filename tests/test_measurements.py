@@ -57,7 +57,7 @@ for rec in file_config:
     mMgr.measurements.append(tempFileM)
 
 def test_bigwig_measurement():
-    assert mMgr.get_measurement('test-bw').get_data("1", 1, 1000)
+    assert mMgr.get_measurement('test-bw').get_data("1", 1, 1000,bins=100)
 
 def test_bigbed_measurement():
-    assert mMgr.get_measurement('test-bb').get_data("chr1", 1, 1000)
+    assert mMgr.get_measurement('test-bb').get_data("chr1", 1, 1000,bins=100)
