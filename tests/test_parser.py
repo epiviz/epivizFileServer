@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import pytest
-from epivizfileserver import parser
+from epivizFileParser.BigBed import BigBed
+from epivizFileParser.BigWig import BigWig
 import sys
 import os
 
@@ -16,9 +17,9 @@ __license__ = "mit"
 data_path = os.getcwd() + "/tests/data"
 
 def test_bigwig():
-    file = parser.BigWig(data_path + "/test.bw")
+    file = BigWig(data_path + "/test.bw")
     assert file.getRange("1", 1, 1000)
 
 def test_bigbed():
-    file = parser.BigBed(data_path + "/test.bigBed")
+    file = BigBed(data_path + "/test.bigBed")
     assert file.getRange("chr1", 1, 1000)

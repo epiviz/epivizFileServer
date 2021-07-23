@@ -2,7 +2,7 @@
 from pkg_resources import get_distribution, DistributionNotFound
 from .handler import FileHandlerProcess
 from .measurements import DbMeasurement, FileMeasurement, ComputedMeasurement, MeasurementManager
-from .parser import BaseFile, BigBed, BigWig, SamFile, BamFile, TbxFile, GtfFile, HDF5File, GtfParsedFile, GWASBigBedPIP, GWASBigBedPval, InteractionBigBed, TranscriptTbxFile
+from epivizFileParser import BaseFile, BigBed, BigWig, SamFile, BamFile, TbxFile, GtfFile, HDF5File, GtfParsedFile, GWASBigBedPIP, GWASBigBedPval, InteractionBigBed, TranscriptTbxFile
 from .server import setup_app, create_fileHandler
 from .trackhub import TrackHub
 
