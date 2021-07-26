@@ -177,7 +177,7 @@ class BigWig(BaseFile):
 
             values = self.getValues(chr, start, end, zoomlvl)
 
-            if respType is "DataFrame":
+            if respType == "DataFrame":
                 result = toDataFrame(values, self.columns)
                 result["chr"] = chr
 

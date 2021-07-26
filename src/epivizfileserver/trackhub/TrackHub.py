@@ -33,7 +33,7 @@ class TrackHub (object):
                 if key in ["hub", "shortLabel", "longLabel",
                         "genomesFile", "email", "descriptionUrl"]:
                     hub[key] = value
-                    if key is "hub":
+                    if key == "hub":
                         hub_count += 1
                         if hub_count > 0:
                             print("hub.txt contains multiple hubs")

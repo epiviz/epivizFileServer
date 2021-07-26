@@ -3,7 +3,7 @@ from aiocache.serializers import JsonSerializer
 import pandas as pd
 from .measurementClass import DbMeasurement, FileMeasurement, ComputedMeasurement
 from ..trackhub import TrackHub
-from ..parser import GtfParsedFile, TbxFile, BigBed
+from ..parser import GtfParsedFile, BigBed, GtfFile
 import ujson
 import requests
 import pandas as pd
@@ -459,7 +459,7 @@ class MeasurementManager(object):
         req_url = url + "/ms/all"
         r = requests.get(req_url)
         if r.status_code != 200:
-            raise Exception("Error importing measurements from collection {} with url {}: {}".format(collection_record['collection_id'], req_url, r.text))
+            raise Exception("Error importing measurements from collection {} with url {}: {}".format(collections['collection_id'], req_url, r.text))
 
 
         records = r.json()
@@ -640,7 +640,7 @@ class MeasurementManager(object):
         if handler is not None:
             for m in trackhub.measurments:
                 # TODO: this looks wrong
-                m.fileHandler = fileHandler
+                m.fileHandler = handler
                 measurements.append(m)
         self.measurements.append(measurements)
         return measurements

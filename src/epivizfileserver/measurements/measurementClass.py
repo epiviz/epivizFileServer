@@ -117,7 +117,7 @@ class Measurement(object):
     def is_file(self):
         """Is measurement a file ?
         """
-        if self.mtype is "db":
+        if self.mtype == "db":
             return False
         return True
 
@@ -155,8 +155,8 @@ class Measurement(object):
         """
 
         logging.debug("Measurement: %s\t%s\t%s" %(self.mid, self.name, "bin_rows"))
-        freq = round((end-start)/length)
-        if end - start < length:
+        freq = round((end-start)/bins)
+        if end - start < bins:
             freq = 1
             
         data = data.set_index(['start', 'end'])

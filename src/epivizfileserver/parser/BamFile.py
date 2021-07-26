@@ -40,9 +40,6 @@ class BamFile(SamFile):
     def to_DF(self, result):
         return toDataFrame(result, self.columns)
 
-    def to_msgpack(self, result):
-        return toMsgpack(result)
-
     def get_col_names(self, result):
         if self.columns is None:
             self.columns = ["chr", "start", "end", "number of sequence aligned"]
@@ -84,7 +81,7 @@ class BamFile(SamFile):
 
             columns = self.get_col_names(result[0])
 
-            if respType is "DataFrame":
+            if respType == "DataFrame":
                 result = toDataFrame(result, self.columns)
             return result, None
         except ValueError as e:

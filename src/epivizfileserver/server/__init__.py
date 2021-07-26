@@ -190,9 +190,9 @@ async def add_source(request):
     file = request.args.get("file")
     type = request.args.get("filetype")
 
-    if type is "json":
+    if type == "json":
         request.app.epivizMeasurementsManager.import_files(file, request.app.epivizFileHandler)
-    elif type is "hub":
+    elif type == "hub":
         request.app.epivizMeasurementsManager.import_trackhub(file, request.app.epivizFileHandler)
 
     param_id = request.args.get("requestId")

@@ -11,6 +11,6 @@ def get_range_helper(toDF, get_bin, get_col_names, chr, start, end, file_iter, c
     else:
         columns = None
 
-    if respType is "DataFrame":
+    if respType == "DataFrame":
         result = toDataFrame(result, columns)
     return result, None
