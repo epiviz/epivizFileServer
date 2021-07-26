@@ -1,4 +1,5 @@
-from epivizFileParser import BigBed, BigWig
+from epivizFileParser import BigBed, BigWig, SamFile, BamFile, TbxFile, GtfParsedFile, GtfFile
+
 import pandas
 import ujson
 
