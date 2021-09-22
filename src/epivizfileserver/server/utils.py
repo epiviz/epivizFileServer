@@ -2,7 +2,6 @@ from epivizFileParser import BigBed, BigWig, SamFile, BamFile, TbxFile, GtfParse
 
 import pandas
 import ujson
-import json
 
 
 def create_parser_object(format, source):
@@ -54,25 +53,27 @@ def format_result(input, params, offset=True):
         (coverage, junctions) = input
 
         if offset:
-            minStart = coverage["start"].iloc[0]
-            minEnd = coverage["end"].iloc[0]
-            coverage["start"] = coverage["start"].diff()
-            coverage["end"] = coverage["end"].diff()
-            coverage["start"].iloc[0] = minStart
-            coverage["end"].iloc[0] = minEnd
+            if len(coverage) > 0:
+                minStart = coverage["start"].iloc[0]
+                minEnd = coverage["end"].iloc[0]
+                coverage["start"] = coverage["start"].diff()
+                coverage["end"] = coverage["end"].diff()
+                coverage["start"].iloc[0] = minStart
+                coverage["end"].iloc[0] = minEnd
 
-            minRegion1Start = junctions["region1_start"].iloc[0]
-            minRegion2Start = junctions["region2_start"].iloc[0]
-            minRegion1End = junctions["region1_end"].iloc[0]
-            minRegion2End = junctions["region2_end"].iloc[0]
-            junctions["region1_start"] = junctions["region1_start"].diff()
-            junctions["region2_start"] = junctions["region2_start"].diff()
-            junctions["region1_end"] = junctions["region1_end"].diff()
-            junctions["region2_end"] = junctions["region2_end"].diff()
-            junctions["region1_start"].iloc[0] = minRegion1Start
-            junctions["region2_start"].iloc[0] = minRegion2Start
-            junctions["region1_end"].iloc[0] = minRegion1End
-            junctions["region2_end"].iloc[0] = minRegion2End
+            if len(junctions) > 0:
+                minRegion1Start = junctions["region1_start"].iloc[0]
+                minRegion2Start = junctions["region2_start"].iloc[0]
+                minRegion1End = junctions["region1_end"].iloc[0]
+                minRegion2End = junctions["region2_end"].iloc[0]
+                junctions["region1_start"] = junctions["region1_start"].diff()
+                junctions["region2_start"] = junctions["region2_start"].diff()
+                junctions["region1_end"] = junctions["region1_end"].diff()
+                junctions["region2_end"] = junctions["region2_end"].diff()
+                junctions["region1_start"].iloc[0] = minRegion1Start
+                junctions["region2_start"].iloc[0] = minRegion2Start
+                junctions["region1_end"].iloc[0] = minRegion1End
+                junctions["region2_end"].iloc[0] = minRegion2End
 
             coverage[["start", "end"]] = coverage[[
                 "start", "end"]].astype(int)
@@ -82,10 +83,10 @@ def format_result(input, params, offset=True):
         coverage_dict = coverage.to_dict('list')
         junctions_dict = junctions.to_dict('list')
 
-        data = json.dumps({
+        data = {
             "coverage": coverage_dict,
             "junctions": junctions_dict
-        })
+        }
 
         return data
 
