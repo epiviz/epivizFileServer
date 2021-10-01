@@ -54,6 +54,8 @@ def format_result(input, params, offset=True):
 
         if offset:
             if len(coverage) > 0:
+                globalStartIndex = int(coverage["start"].values.min())
+
                 minStart = coverage["start"].iloc[0]
                 minEnd = coverage["end"].iloc[0]
                 coverage["start"] = coverage["start"].diff()
@@ -84,8 +86,28 @@ def format_result(input, params, offset=True):
         junctions_dict = junctions.to_dict('list')
 
         data = {
-            "coverage": coverage_dict,
-            "junctions": junctions_dict
+            "rows": {
+                "globalStartIndex": globalStartIndex,
+                "useOffset": offset,
+                "values": {
+                    "id": None,
+                    "chr": [params.get('seqName')],
+                    "start": [params.get('start')],
+                    "end": [params.get('end')],
+                    "strand": ["+"],
+                    "metadata": {
+                        "coverage": [coverage_dict],
+                        "junctions": [junctions_dict]
+                    },
+
+                }
+            },
+            "values": {
+                "globalStartIndex": globalStartIndex,
+                "values": {
+                    params.get('measurement')[0]: [0]
+                }
+            }
         }
 
         return data
