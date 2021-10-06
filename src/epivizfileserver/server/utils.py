@@ -52,6 +52,8 @@ def format_result(input, params, offset=True):
     if type(input) is tuple:
         (coverage, junctions) = input
 
+        globalStartIndex = None
+
         if offset:
             if len(coverage) > 0:
                 globalStartIndex = int(coverage["start"].values.min())
