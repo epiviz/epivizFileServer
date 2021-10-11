@@ -1,4 +1,6 @@
-from epivizFileParser import BigBed, BigWig, SamFile, TbxFile, TranscriptTbxFile, BamFile, GtfFile, GtfParsedFile, GWASBigBedPval, GWASBigBedPIP, TileDB, InteractionBigBed
+from epivizFileParser import BigBed, BigWig, SamFile, TbxFile, TranscriptTbxFile
+from epivizFileParser import BamFile, GtfFile, GtfParsedFile, GWASBigBedPval
+from epivizFileParser import GWASBigBedPIP, TileDB, InteractionBigBed, SplicingBamFile
 
 def create_parser_object(format, source):
     """
@@ -33,7 +35,8 @@ def create_parser_object(format, source):
         "interaction_bigbed": InteractionBigBed,
         "interaction_bigBed": InteractionBigBed,
         "interaction_BigBed": InteractionBigBed,
-        "transcript": TranscriptTbxFile
+        "transcript": TranscriptTbxFile,
+        "splicing": SplicingBamFile
     }
     
     return req_manager[format]

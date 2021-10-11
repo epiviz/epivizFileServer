@@ -389,6 +389,8 @@ class FileMeasurement(Measurement):
                 cols.extend(self.metadata)
                 result = result[cols]
                 result = result.fillna(0)
+            elif self.mtype == "splicing":
+                pass
 
             if bin and not self.isGenes and self.mtype not in ["tiledb", "interaction_bigbed"]: 
                 # result, err = await self.fileHandler.binFileData(self.source, self.mtype, result, chr, start, end, 

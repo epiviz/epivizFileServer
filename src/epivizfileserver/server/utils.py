@@ -3,6 +3,7 @@ from epivizFileParser import BigBed, BigWig, SamFile, BamFile, TbxFile, GtfParse
 import pandas
 import ujson
 
+
 def create_parser_object(format, source):
     """
     Create appropriate File class based on file format
@@ -13,7 +14,7 @@ def create_parser_object(format, source):
 
     Returns:
         An instance of parser class
-    """  
+    """
 
     req_manager = {
         "BigWig": BigWig,
@@ -34,9 +35,10 @@ def create_parser_object(format, source):
 
     return req_manager[format](source)
 
+
 def format_result(input, params, offset=True):
     """
-    Fromat result to a epiviz compatible format
+    Format result to a epiviz compatible format
 
     Args:
         input : input dataframe
@@ -45,18 +47,83 @@ def format_result(input, params, offset=True):
 
     Returns:
         formatted JSON response
-    """  
+    """
+
+    if type(input) is tuple:
+        (coverage, junctions) = input
+
+        globalStartIndex = None
+
+        if offset:
+            if len(coverage) > 0:
+                globalStartIndex = int(coverage["start"].values.min())
+
+                minStart = coverage["start"].iloc[0]
+                minEnd = coverage["end"].iloc[0]
+                coverage["start"] = coverage["start"].diff()
+                coverage["end"] = coverage["end"].diff()
+                coverage["start"].iloc[0] = minStart
+                coverage["end"].iloc[0] = minEnd
+
+            if len(junctions) > 0:
+                minRegion1Start = junctions["region1_start"].iloc[0]
+                minRegion2Start = junctions["region2_start"].iloc[0]
+                minRegion1End = junctions["region1_end"].iloc[0]
+                minRegion2End = junctions["region2_end"].iloc[0]
+                junctions["region1_start"] = junctions["region1_start"].diff()
+                junctions["region2_start"] = junctions["region2_start"].diff()
+                junctions["region1_end"] = junctions["region1_end"].diff()
+                junctions["region2_end"] = junctions["region2_end"].diff()
+                junctions["region1_start"].iloc[0] = minRegion1Start
+                junctions["region2_start"].iloc[0] = minRegion2Start
+                junctions["region1_end"].iloc[0] = minRegion1End
+                junctions["region2_end"].iloc[0] = minRegion2End
+
+            coverage[["start", "end"]] = coverage[[
+                "start", "end"]].astype(int)
+            junctions[["region1_start", "region2_start", "region1_end", "region2_end"]] = junctions[[
+                "region1_start", "region2_start", "region1_end", "region2_end"]].astype(int)
+
+        coverage_dict = coverage.to_dict('list')
+        junctions_dict = junctions.to_dict('list')
+
+        data = {
+            "rows": {
+                "globalStartIndex": globalStartIndex,
+                "useOffset": offset,
+                "values": {
+                    "id": None,
+                    "chr": [params.get('seqName')],
+                    "start": [params.get('start')],
+                    "end": [params.get('end')],
+                    "strand": ["+"],
+                    "metadata": {
+                        "coverage": [coverage_dict],
+                        "junctions": [junctions_dict]
+                    },
+
+                }
+            },
+            "values": {
+                "globalStartIndex": globalStartIndex,
+                "values": {
+                    params.get('measurement')[0]: [0]
+                }
+            }
+        }
+
+        return data
 
     if len(input) > 0:
         input.start = input.start.astype("float")
         input.end = input.end.astype("float")
-    
+
     globalStartIndex = None
 
     data = {
         "rows": {
             "globalStartIndex": globalStartIndex,
-            "useOffset" : offset,
+            "useOffset": offset,
             "values": {
                 "id": None,
                 "chr": [],
@@ -75,7 +142,7 @@ def format_result(input, params, offset=True):
 
     if len(input) > 0:
         globalStartIndex = input["start"].values.min()
-        
+
         if offset:
             minStart = input["start"].iloc[0]
             minEnd = input["end"].iloc[0]
@@ -84,11 +151,10 @@ def format_result(input, params, offset=True):
             input["start"].iloc[0] = minStart
             input["end"].iloc[0] = minEnd
 
-
         data = {
             "rows": {
                 "globalStartIndex": globalStartIndex,
-                "useOffset" : offset,
+                "useOffset": offset,
                 "values": {
                     "id": None,
                     "chr": [],
@@ -132,6 +198,7 @@ def format_result(input, params, offset=True):
     data["rows"]["values"]["id"] = None
 
     return data
+
 
 def bin_rows(input, max_rows=2000):
     """
