@@ -53,10 +53,12 @@ def format_result(input, params, offset=True):
         (coverage, junctions) = input
 
         globalStartIndex = None
+        maxEnd = None
 
         if offset:
             if len(coverage) > 0:
                 globalStartIndex = int(coverage["start"].values.min())
+                maxEnd = int(coverage["end"].values.max())
 
                 minStart = coverage["start"].iloc[0]
                 minEnd = coverage["end"].iloc[0]
@@ -94,8 +96,8 @@ def format_result(input, params, offset=True):
                 "values": {
                     "id": None,
                     "chr": [params.get('seqName')],
-                    "start": [params.get('start')],
-                    "end": [params.get('end')],
+                    "start": [globalStartIndex],
+                    "end": [maxEnd],
                     "strand": ["+"],
                     "metadata": {
                         "coverage": [coverage_dict],
