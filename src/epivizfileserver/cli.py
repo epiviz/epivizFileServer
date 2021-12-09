@@ -10,7 +10,7 @@ Options:
   --ucsc=<genome>   genome build to download and parse from ucsc, eg: mm10
   --gtf=<file>  local gtf file
   -c --compressed   File is gzip compressed
-  --output=<output> output prefix of file to save, defaults to current directory and saves result as output.tsv eg: ./mm10
+  --output=<output> the directory where file is saved, defaults to current working directory
   -h --help     Show this screen.
 """
 
@@ -178,13 +178,9 @@ def main():
         full_path = gtf
 
     if output is None:
-        if genome is not None:
-            output = os.getcwd() + "/" + genome + ".tsv.gz"
-        else:
-            output = os.getcwd() + "/output.tsv.gz"
+        output = os.getcwd()
     else:
-        output = output + ".tsv.gz"
-
+        output = os.path.join(os.getcwd(),output)
 
     if full_path is None:
         raise("either --ucsc or --gtf must be provided")
@@ -193,25 +189,25 @@ def main():
         res = parse_genome(full_path, compressed)
 
         print("Write genomes to disk - ", output)
-        res.to_csv(output, header = False, index = False, sep="\t")
+        res.to_csv(os.path.join(output,"genes.tsv.gz"), header = False, index = False, sep="\t")
 
         res = parse_transcript(full_path, compressed)
 
         print("Write transcripts to disk - ", output)
-        res.to_csv("transcripts." + output, header = False, index = False, sep="\t")
+        res.to_csv(os.path.join(output,"transcripts.tsv"), header = False, index = False, sep="\t")
 
     else:
         if build_genome:
             res = parse_genome(full_path, compressed)
 
             print("Write to disk - ", output)
-            res.to_csv(output, header = False, index = False, sep="\t")
+            res.to_csv(os.path.join(output,"genes.tsv.gz"), header = False, index = False, sep="\t")
 
         elif build_transcript:
             res = parse_transcript(full_path, compressed)
 
             print("Write to disk - ", "transcripts." + output)
-            res.to_csv("transcripts." + output, header = False, index = False, sep="\t")
+            res.to_csv(os.path.join(output,"transcripts.tsv"), header = False, index = False, sep="\t")
 
 if __name__ == '__main__':
     main()
