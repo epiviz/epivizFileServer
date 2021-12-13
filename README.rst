@@ -59,3 +59,23 @@ To setup run the following commands from the project directory
     - source distribution  ```python setup.py sdist```
     - binary distribution  ```python setup.py bdist```
     - wheel  distribution  ```python setup.py bdist_wheel```
+
+Download and/or Build Genome or Transcript files for use with Epiviz File Server
+================================================================================
+Either --ucsc or --gtf must be provided.
+
+- To generate a genome file,       ```efs build_genome --ucsc=mm10 --output=mm10```
+- To generate a transcripts file,  ```efs build_transcript --ucsc=mm10 --output=mm10``` (transcript files are prepended with `transcripts.`)
+- To generate both files,          ```efs build_both --ucsc=mm10 --output=mm10```
+
+Usage:
+
+```efs.py (build_genome | build_transcript | build_both) (--ucsc=<genome> | --gtf=<file>) [--compressed] [--output=<output>]```
+
+Options:
+
+- ```--ucsc=<genome>```   genome build to download and parse from ucsc, eg: mm10
+- ```--gtf=<file>```      local gtf file
+- ```-c --compressed```   File is gzip compressed
+- ```--output=<output>``` the directory where file is saved, defaults to current working directory
+- ```-h --help```         Show this screen.
