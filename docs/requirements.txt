@@ -1,7 +1,7 @@
 aiocache==0.10.0
 aiodns==1.1.1
 aiofiles==0.4.0
-aiohttp==3.4.4
+aiohttp==3.7.4
 dask==0.19.2
 distributed==1.23.2
 pandas==0.23.4
